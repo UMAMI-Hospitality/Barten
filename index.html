@@ -189,7 +189,12 @@ const {S:SECS, U:UNITS, I:INGS, R:RECS, M:MPRICE, MO:MENUONLY} = DATA;
 
 let ST={users:null,ov:{}}, ME=null, Q='', FILT='all';
 let VIEW={t:'lib'}, STACK=[], SCROLL=0;
-const K={users:'barten:users:v1',ov:'barten:overrides:v1'};
+const K={users:'barten:users:v1',ov:'barten:overrides:v1',custom:'barten:custom:v1'};
+const BASE_N=RECS.length;              // everything past this came from the New recipe form
+let CUSTOM=[];
+const isCustom=i=>i>=BASE_N;
+const cust=i=>CUSTOM[i-BASE_N];
+const isDead=i=>isCustom(i)&&cust(i).del;
 let MEM={};
 const HASWS = typeof window.storage==='object' && window.storage && typeof window.storage.get==='function';
 function hasLS(){ try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); return true; }catch(e){ return false; } }
@@ -207,7 +212,14 @@ async function sset(k,v){
 }
 
 const NAME=i=>RECS[i][0], SEC=i=>SECS[RECS[i][1]], ISSUB=i=>RECS[i][2]===1, ONMENU=i=>MPRICE[i]>0;
-function rows(i){ const o=ST.ov[i]; return (o&&o.rows)?o.rows:RECS[i][3]; }
+function rows(i){ if(isCustom(i)) return RECS[i][3]; const o=ST.ov[i]; return (o&&o.rows)?o.rows:RECS[i][3]; }
+/* the array a change should be written into */
+function editRows(i){
+  if(isCustom(i)) return RECS[i][3];
+  if(!ST.ov[i]) ST.ov[i]={};
+  if(!ST.ov[i].rows) ST.ov[i].rows=JSON.parse(JSON.stringify(RECS[i][3]));
+  return ST.ov[i].rows;
+}
 function rowName(r){ return r[0]===1?(RECS[r[1]]?NAME(r[1]):'\u2014'):INGS[r[1]]; }
 const rowUnit=r=>UNITS[r[2]];
 function imgOf(i){ const o=ST.ov[i]; return (o&&o.img)?o.img:''; }
@@ -219,12 +231,14 @@ function plate(i,extra){
     :`<span class="init">${esc(initials(NAME(i)))}</span>`}</div>`;
 }
 /* which recipes call this sub-recipe */
-function usedIn(si){ return RECS.map((r,i)=>i).filter(i=>i!==si && rows(i).some(r=>r[0]===1&&r[1]===si)); }
+function usedIn(si){ return RECS.map((r,i)=>i).filter(i=>i!==si && !isDead(i) && rows(i).some(r=>r[0]===1&&r[1]===si)); }
 
 /* ---------- boot ---------- */
 (async function(){
   ST.users=await sget(K.users);
   ST.ov=(await sget(K.ov))||{};
+  CUSTOM=(await sget(K.custom))||[];
+  CUSTOM.forEach(c=>RECS.push([c.name, SECS.indexOf(c.sec)>=0?SECS.indexOf(c.sec):SECS.length-1, c.sub, c.rows]));
   if(!ST.users){
     ST.users=[{u:'irfan',p:'2026',role:'admin'},{u:'kitchen',p:'1111',role:'chef'}];
     await sset(K.users,ST.users);
@@ -274,6 +288,7 @@ function render(){
   const m=document.getElementById('main');
   if(VIEW.t==='lib') m.innerHTML=library();
   else if(VIEW.t==='rec') m.innerHTML=sheet(VIEW.i);
+  else if(VIEW.t==='new') m.innerHTML=newRecipe();
   else if(VIEW.t==='menu') m.innerHTML=menucheck();
   else if(VIEW.t==='users') m.innerHTML=users();
   window.scrollTo(0, VIEW.t==='lib' ? SCROLL : 0);
@@ -303,6 +318,7 @@ const QUICK=[['all','All'],['dish','Dishes'],['sub','Sub-recipes'],['onmenu','On
 function library(){
   const q=Q.toLowerCase().trim();
   const list=RECS.map((r,i)=>i).filter(i=>{
+    if(isDead(i)) return false;
     if(FILT==='sub'&&!ISSUB(i)) return false;
     if(FILT==='dish'&&ISSUB(i)) return false;
     if(FILT==='onmenu'&&!ONMENU(i)) return false;
@@ -314,6 +330,8 @@ function library(){
   const opts=['<option value="all">All sections</option>']
     .concat(SECS.map(s=>`<option value="${esc(s)}" ${FILT===s?'selected':''}>${esc(s)}</option>`)).join('');
   return `
+  ${ME.role==='admin'?`<button class="gpill" style="width:100%;margin-bottom:12px;padding:13px"
+     onclick="newForm()">+ New recipe</button>`:''}
   <div class="srow">
     <input class="inp" id="q" placeholder="Search a dish, sauce or ingredient" value="${esc(Q)}">
     <select class="sel" id="f">${opts}</select>
@@ -391,7 +409,8 @@ function sheet(i){
 
   <div class="card">
     <div class="ch">Ingredients</div>
-    <div class="chn">${rs.length} lines${subRows?` \u00B7 ${subRows} made in-house`:''}</div>
+    <div class="chn">${rs.length?`${rs.length} lines${subRows?` \u00B7 ${subRows} made in-house`:''}`
+      :'Nothing added yet \u2014 use the box below.'}</div>
     ${lines}
     ${ed?addPanel(i):''}
   </div>
@@ -408,12 +427,24 @@ function sheet(i){
 
   ${admin?`<div class="card">
     <div class="ch">Admin</div>
-    <div class="chn">Edits save on this device and stay until you restore the original.</div>
+    <div class="chn">${isCustom(i)?'This recipe was added in the app. It saves on this device.'
+      :'Edits save on this device and stay until you restore the original.'}</div>
     <div class="row">
       <button class="gpill sm" onclick="toggleEdit()">${ed?'Done editing':'Edit recipe'}</button>
-      ${(ST.ov[i]&&ST.ov[i].rows)?`<button class="gpill ghost sm" onclick="resetRec(${i})">Restore original</button>`:''}
+      ${(!isCustom(i)&&ST.ov[i]&&ST.ov[i].rows)?`<button class="gpill ghost sm" onclick="resetRec(${i})">Restore original</button>`:''}
       <span class="saved" id="sv">Saved</span>
     </div>
+    ${isCustom(i)?`<div class="row" style="margin-top:11px">
+      <input class="tx" style="flex:1;min-width:150px" value="${esc(NAME(i))}"
+        onchange="renameRecipe(${i},this.value)" placeholder="Recipe name">
+      ${!isSub?`<select class="sel2" onchange="resectionRecipe(${i},this.value)">
+        ${SECS.filter(x=>x!=='Sub-Recipes').map(x=>`<option ${SEC(i)===x?'selected':''}>${esc(x)}</option>`).join('')}
+        </select>`:''}
+    </div>
+    <div class="row" style="margin-top:11px">
+      <button class="gpill ghost sm" onclick="deleteRecipe(${i})">Delete this recipe</button>
+    </div>
+    <div id="delmsg"></div>`:''}
     <div class="row" style="margin-top:11px">
       <input class="tx" style="flex:1;min-width:170px" id="imu" placeholder="Photo URL" value="${esc(imgOf(i))}">
       <button class="gpill ghost sm" onclick="setImg(${i},document.getElementById('imu').value)">Set photo</button>
@@ -445,7 +476,7 @@ function pickList(){
   const q=ADD.q.trim().toLowerCase();
   let out='';
   if(ADD.type==='sub'){
-    const list=RECS.map((r,n)=>n).filter(n=>ISSUB(n)&&(!q||NAME(n).toLowerCase().includes(q)));
+    const list=RECS.map((r,n)=>n).filter(n=>ISSUB(n)&&!isDead(n)&&(!q||NAME(n).toLowerCase().includes(q)));
     if(!list.length) return '<div class="picknone">No sub-recipe matches that.</div>';
     out=list.slice(0,60).map(n=>`<button class="pick ${ADD.sel===n?'on':''}" onclick="pickIt(${n})">${esc(NAME(n))}
       <small>${rows(n).length} items</small></button>`).join('');
@@ -471,16 +502,16 @@ window.pickIt=n=>{ ADD.sel=n; ADD.newName=''; refreshPicks(true); };
 window.pickNew=()=>{ ADD.newName=ADD.q.trim(); ADD.sel=null; refreshPicks(true); };
 
 window.toggleEdit=()=>{ ADD={type:'ing',sel:null,newName:'',q:''}; VIEW.edit=!VIEW.edit; render(); };
-function ensure(i){ if(!ST.ov[i]) ST.ov[i]={}; if(!ST.ov[i].rows) ST.ov[i].rows=JSON.parse(JSON.stringify(RECS[i][3])); }
-async function save(){ const ok=await sset(K.ov,ST.ov); const el=document.getElementById('sv');
+function ensure(i){ editRows(i); }
+async function saveCustom(){ return sset(K.custom, CUSTOM); }
+async function save(){ const ok=await sset(K.ov,ST.ov) && await saveCustom(); const el=document.getElementById('sv');
   if(el){ el.textContent=ok?'Saved':'Saved for this session only'; el.classList.add('on'); setTimeout(()=>el.classList.remove('on'),1400); } }
-window.setQty=async(i,n,v)=>{ ensure(i); ST.ov[i].rows[n][3]=Number(v)||0; await save(); render(); };
-window.setUnit=async(i,n,v)=>{ ensure(i); ST.ov[i].rows[n][2]=UNITS.indexOf(v); await save(); render(); };
-window.delRow=async(i,n)=>{ ensure(i); ST.ov[i].rows.splice(n,1); await save(); render(); };
+window.setQty=async(i,n,v)=>{ editRows(i)[n][3]=Number(v)||0; await save(); render(); };
+window.setUnit=async(i,n,v)=>{ editRows(i)[n][2]=UNITS.indexOf(v); await save(); render(); };
+window.delRow=async(i,n)=>{ editRows(i).splice(n,1); await save(); render(); };
 window.moveRow=async(i,n,dir)=>{
   const to=n+dir;
-  ensure(i);
-  const rs=ST.ov[i].rows;
+  const rs=editRows(i);
   if(to<0||to>=rs.length) return;
   [rs[n],rs[to]]=[rs[to],rs[n]];
   await save();
@@ -490,14 +521,14 @@ window.addRow=async i=>{
   const uEl=document.getElementById('nu'), qEl=document.getElementById('nq');
   if(!uEl) return;
   const u=uEl.value, q=Number(qEl.value)||0;
-  ensure(i);
-  if(ADD.newName){ INGS.push(ADD.newName); ST.ov[i].rows.push([0,INGS.length-1,UNITS.indexOf(u),q]); }
+  const rs=editRows(i);
+  if(ADD.newName){ INGS.push(ADD.newName); rs.push([0,INGS.length-1,UNITS.indexOf(u),q]); }
   else if(ADD.sel===null) return;
   else if(ADD.type==='sub'){
     if(ADD.sel===i) return;                       // a recipe cannot contain itself
-    ST.ov[i].rows.push([1,ADD.sel,UNITS.indexOf(u),q]);
+    rs.push([1,ADD.sel,UNITS.indexOf(u),q]);
   }
-  else ST.ov[i].rows.push([0,ADD.sel,UNITS.indexOf(u),q]);
+  else rs.push([0,ADD.sel,UNITS.indexOf(u),q]);
   ADD={type:ADD.type,sel:null,newName:'',q:''};
   await save(); render();
 };
@@ -505,9 +536,82 @@ window.setImg=async(i,v)=>{ if(!ST.ov[i]) ST.ov[i]={}; ST.ov[i].img=String(v||''
 window.resetRec=async i=>{ if(ST.ov[i]){ delete ST.ov[i].rows; if(!Object.keys(ST.ov[i]).length) delete ST.ov[i]; }
   await save(); VIEW.edit=false; render(); };
 
+/* ---------- new recipe ---------- */
+let NEW={name:'', kind:'dish', sec:SECS[0]};
+window.newForm=()=>{ NEW={name:'',kind:'dish',sec:SECS[0]}; open_('new'); };
+window.newKind=k=>{ NEW.kind=k; render(); };
+window.newField=(f,v)=>{ NEW[f]=v; const b=document.getElementById('crt'); if(b) b.disabled=!NEW.name.trim(); };
+function newRecipe(){
+  const secs=SECS.filter(x=>x!=='Sub-Recipes');
+  return `
+  <button class="back" onclick="back()">\u2190 ${esc(backLabel())}</button>
+  <div class="card">
+    <h3>New recipe</h3>
+    <p>Give it a name and say what it is. You add the ingredients on the next screen.</p>
+    <div class="ch">What is it</div>
+    <div class="row" style="margin-bottom:14px">
+      <button class="qb ${NEW.kind==='dish'?'on':''}" onclick="newKind('dish')">A dish</button>
+      <button class="qb ${NEW.kind==='sub'?'on':''}" onclick="newKind('sub')">A sub-recipe</button>
+    </div>
+    <div class="ch">Name</div>
+    <input class="tx" id="nn" style="width:100%;margin-bottom:14px" value="${esc(NEW.name)}"
+      placeholder="${NEW.kind==='sub'?'e.g. Yuzu Kosho Butter':'e.g. Miso Black Cod'}"
+      oninput="newField('name',this.value)">
+    ${NEW.kind==='dish'?`<div class="ch">Menu section</div>
+      <select class="sel2" style="width:100%;margin-bottom:14px" onchange="newField('sec',this.value)">
+        ${secs.map(x=>`<option ${NEW.sec===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`:''}
+    <button class="gpill" id="crt" style="width:100%;padding:13px" onclick="createRecipe()"
+      ${NEW.name.trim()?'':'disabled'}>Create and add ingredients</button>
+    <div class="note">A sub-recipe is a prep you make in-house and use inside other dishes \u2014 a sauce,
+      a marinade, a pickle. It can then be linked from any recipe.</div>
+  </div>`;
+}
+window.createRecipe=async()=>{
+  const name=(document.getElementById('nn').value||'').trim();
+  if(!name) return;
+  const sub=NEW.kind==='sub'?1:0;
+  const sec=sub?'Sub-Recipes':NEW.sec;
+  CUSTOM.push({name, sec, sub, rows:[], del:false});
+  const c=CUSTOM[CUSTOM.length-1];
+  RECS.push([c.name, SECS.indexOf(sec), sub, c.rows]);
+  const idx=RECS.length-1;
+  await saveCustom();
+  STACK=[{t:'lib'}];
+  VIEW={t:'rec', i:idx, edit:true};
+  ADD={type:'ing',sel:null,newName:'',q:''};
+  render();
+};
+window.renameRecipe=async(i,v)=>{
+  v=(v||'').trim(); if(!v||!isCustom(i)) return;
+  cust(i).name=v; RECS[i][0]=v; await saveCustom(); render();
+};
+window.resectionRecipe=async(i,v)=>{
+  if(!isCustom(i)) return;
+  cust(i).sec=v; RECS[i][1]=SECS.indexOf(v); await saveCustom(); render();
+};
+window.deleteRecipe=async i=>{
+  if(!isCustom(i)) return;
+  const used=usedIn(i);
+  const box=document.getElementById('delmsg');
+  if(used.length){
+    box.innerHTML=`<div class="warnbox">Can\u2019t delete this yet \u2014 it is used in
+      ${used.map(u=>esc(NAME(u))).join(', ')}. Remove it from those first.</div>`;
+    return;
+  }
+  if(!VIEW.confirmDel){ VIEW.confirmDel=true;
+    box.innerHTML=`<div class="warnbox">Delete <b>${esc(NAME(i))}</b> for good?
+      <button class="gpill sm" style="margin-left:8px" onclick="deleteRecipe(${i})">Yes, delete</button>
+      <button class="gpill ghost sm" onclick="VIEW.confirmDel=false;render()">Cancel</button></div>`;
+    return;
+  }
+  cust(i).del=true; cust(i).rows=[];
+  await saveCustom();
+  VIEW.confirmDel=false; STACK=[]; VIEW={t:'lib'}; render();
+};
+
 /* ---------- menu check ---------- */
 function menucheck(){
-  const off=RECS.map((r,i)=>i).filter(i=>!ISSUB(i)&&!ONMENU(i));
+  const off=RECS.map((r,i)=>i).filter(i=>!ISSUB(i)&&!ONMENU(i)&&!isDead(i));
   return `
   <div class="card">
     <h3>Menu check</h3>
