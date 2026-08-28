@@ -89,6 +89,11 @@ header{position:sticky;top:0;z-index:40;background:rgba(14,13,12,.93);backdrop-f
 .tx.w{width:100%}
 textarea.tx{resize:vertical;line-height:1.5}
 .hint2{font-size:11.5px;color:var(--mute2);margin-top:6px;line-height:1.45}
+.ing.confirmrow{gap:8px;flex-wrap:wrap;background:rgba(216,88,63,.10);border-radius:12px;padding:11px 12px;
+  border-bottom:0;margin:5px 0}
+.ing.confirmrow .n{color:#E88A79;font-size:14px}
+.dangerbox{margin-top:12px;background:rgba(216,88,63,.10);border:1px solid rgba(216,88,63,.32);
+  border-radius:13px;padding:12px 14px;font-size:13px;color:#EDA898;line-height:1.5}
 .sugbox{margin-top:9px;background:rgba(233,167,60,.08);border:1px solid rgba(233,167,60,.26);
   border-radius:13px;padding:11px 13px;font-size:12.5px;color:#E4CFA6;line-height:1.5}
 .addbox{margin-top:16px;padding-top:15px;border-top:1px solid var(--line)}
@@ -217,8 +222,7 @@ main{flex:1;width:100%;max-width:640px;margin:0 auto;padding:18px 16px 76px}
    role is 'admin' (can edit recipes) or 'chef' (read only).
    ========================================================================= */
 const USERS = [
-  { u:'irfan.malek',   p:'2026', role:'admin' },
-  { u:'mustafa.said',  p:'2026', role:'admin' },
+  { u:'irfan',   p:'2026', role:'admin' },
   { u:'kitchen', p:'1111', role:'chef'  },
 ];
 /* ======================================================================= */
@@ -246,7 +250,7 @@ const BASE_N=RECS.length;              // everything past this came from the New
 let CUSTOM=[];
 const isCustom=i=>i>=BASE_N;
 const cust=i=>CUSTOM[i-BASE_N];
-const isDead=i=>isCustom(i)&&(!cust(i)||cust(i).del);
+const isDead=i=>isCustom(i) ? (!cust(i)||!!cust(i).del) : !!meta(i).del;
 let MEM={};
 const HASWS = typeof window.storage==='object' && window.storage && typeof window.storage.get==='function';
 function hasLS(){ try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); return true; }catch(e){ return false; } }
@@ -489,7 +493,13 @@ function sheet(i){
     const move=ed?`<div class="mv">
       <button onclick="moveRow(${i},${n},-1)" ${n===0?'disabled':''}>\u25B2</button>
       <button onclick="moveRow(${i},${n},1)" ${n===rs.length-1?'disabled':''}>\u25BC</button></div>`:'';
-    const del=ed?`<button class="x" onclick="delRow(${i},${n})">\u00D7</button>`:'';
+    const del=ed?`<button class="x" onclick="askDelRow(${n})" title="Remove this line">\u00D7</button>`:'';
+    if(ed && VIEW.confirmRow===n){
+      return `<div class="ing confirmrow">
+        <div class="n">Remove <b>${esc(nm)}</b> from this recipe?</div>
+        <button class="gpill sm" onclick="delRow(${i},${n})">Remove</button>
+        <button class="gpill ghost sm" onclick="cancelDelRow()">Keep</button></div>`;
+    }
     const hi=(VIEW.moved===n)?' moved':'';
     if(r[0]===1&&RECS[r[1]]){
       return `<div class="subrow${hi}">
@@ -602,11 +612,13 @@ function adminCard(i,ed,isSub,m,allerg,steps){
         ${!isSub?`<select class="sel2" onchange="resectionRecipe(${i},this.value)">
           ${SECS.filter(x=>x!=='Sub-Recipes').map(x=>`<option ${SEC(i)===x?'selected':''}>${esc(x)}</option>`).join('')}
           </select>`:''}
-      </div>
-      <div class="row" style="margin-top:11px">
-        <button class="gpill ghost sm" onclick="deleteRecipe(${i})">Delete this recipe</button>
-      </div>
-      <div id="delmsg"></div>`:''}
+      </div>`:''}
+
+      <label>Delete</label>
+      <button class="gpill ghost sm" onclick="deleteRecipe(${i})">Delete this recipe</button>
+      <div id="delmsg"></div>
+      <div class="hint2">${isCustom(i)?'This one was added in the app, so deleting it is permanent.'
+        :'This came from your recipe files. Deleting hides it \u2014 you can bring it back from the Users tab.'}</div>
     </div>`:''}
   </div>`;
 }
@@ -698,14 +710,16 @@ window.uploadPhoto=(i,inp)=>{
   inp.value='';
 };
 
-window.toggleEdit=()=>{ ADD={type:'ing',sel:null,newName:'',q:''}; VIEW.edit=!VIEW.edit; render(); };
+window.toggleEdit=()=>{ ADD={type:'ing',sel:null,newName:'',q:''}; VIEW.confirmRow=null; VIEW.edit=!VIEW.edit; render(); };
 function ensure(i){ editRows(i); }
 async function saveCustom(){ LOCAL_CUSTOM=CUSTOM.slice(SHARED_N); return sset(K.custom, LOCAL_CUSTOM); }
 async function save(){ const ok=await sset(K.ov,LOCAL_OV) && await saveCustom(); const el=document.getElementById('sv');
   if(el){ el.textContent=ok?'Saved':'Saved for this session only'; el.classList.add('on'); setTimeout(()=>el.classList.remove('on'),1400); } }
 window.setQty=async(i,n,v)=>{ editRows(i)[n][3]=Number(v)||0; await save(); render(); };
 window.setUnit=async(i,n,v)=>{ editRows(i)[n][2]=UNITS.indexOf(v); await save(); render(); };
-window.delRow=async(i,n)=>{ editRows(i).splice(n,1); await save(); render(); };
+window.askDelRow=n=>{ VIEW.confirmRow=n; render(); };
+window.cancelDelRow=()=>{ VIEW.confirmRow=null; render(); };
+window.delRow=async(i,n)=>{ editRows(i).splice(n,1); VIEW.confirmRow=null; await save(); render(); };
 window.moveRow=async(i,n,dir)=>{
   const to=n+dir;
   const rs=editRows(i);
@@ -787,24 +801,38 @@ window.resectionRecipe=async(i,v)=>{
   cust(i).sec=v; RECS[i][1]=SECS.indexOf(v); await saveCustom(); render();
 };
 window.deleteRecipe=async i=>{
-  if(!isCustom(i)) return;
-  const used=usedIn(i);
   const box=document.getElementById('delmsg');
+  const used=usedIn(i);
   if(used.length){
-    box.innerHTML=`<div class="warnbox">Can\u2019t delete this yet \u2014 it is used in
-      ${used.map(u=>esc(NAME(u))).join(', ')}. Remove it from those first.</div>`;
+    VIEW.confirmDel=false;
+    box.innerHTML=`<div class="dangerbox">Not yet \u2014 <b>${esc(NAME(i))}</b> is used inside
+      ${used.map(u=>esc(NAME(u))).join(', ')}. Take it out of those first, or they will point at nothing.</div>`;
     return;
   }
-  if(!VIEW.confirmDel){ VIEW.confirmDel=true;
-    box.innerHTML=`<div class="warnbox">Delete <b>${esc(NAME(i))}</b> for good?
-      <button class="gpill sm" style="margin-left:8px" onclick="deleteRecipe(${i})">Yes, delete</button>
-      <button class="gpill ghost sm" onclick="VIEW.confirmDel=false;render()">Cancel</button></div>`;
+  if(!VIEW.confirmDel){
+    VIEW.confirmDel=true;
+    box.innerHTML=`<div class="dangerbox">
+      Delete <b>${esc(NAME(i))}</b>?<br>
+      ${isCustom(i)?'It was added in the app, so this cannot be undone.'
+        :'It came from your recipe files, so it is only hidden and can be restored later.'}
+      <div class="row" style="margin-top:10px">
+        <button class="gpill sm" onclick="deleteRecipe(${i})">Yes, delete</button>
+        <button class="gpill ghost sm" onclick="cancelDelete()">Cancel</button>
+      </div></div>`;
     return;
   }
-  cust(i).del=true; cust(i).rows=[];
-  await saveCustom();
-  VIEW.confirmDel=false; STACK=[]; VIEW={t:'lib'}; render();
+  if(isCustom(i)){ cust(i).del=true; cust(i).rows=[]; await saveCustom(); }
+  else { setMetaField(i,'del',true); await saveMeta(); }
+  VIEW.confirmDel=false; VIEW.details=false; VIEW.edit=false;
+  STACK=[]; VIEW={t:'lib'}; render();
 };
+window.cancelDelete=()=>{ VIEW.confirmDel=false; render(); };
+window.restoreRecipe=async i=>{
+  if(isCustom(i)){ if(cust(i)) cust(i).del=false; await saveCustom(); }
+  else { setMetaField(i,'del',false); await saveMeta(); }
+  render();
+};
+
 
 /* ---------- menu check ---------- */
 function menucheck(){
@@ -860,6 +888,16 @@ function users(){
     <div class="note">Then on GitHub: open <b>index.html</b>, click the pencil, search for
       <b>WHO CAN SIGN IN</b>, paste the line under the last one, and commit. Everyone gets it within a minute.</div>
   </div>
+
+  ${(()=>{ const hid=RECS.map((r,i)=>i).filter(isDead);
+    return hid.length?`<div class="card">
+      <div class="ch">Deleted recipes \u2014 ${hid.length}</div>
+      <div class="chn">Hidden from everyone. The ones from your recipe files can be brought back.</div>
+      <table class="tbl"><tbody>${hid.map(i=>`<tr>
+        <td>${esc(RECS[i][0])}<div style="color:var(--mute2);font-size:11.5px">${esc(SECS[RECS[i][1]])}</div></td>
+        <td style="text-align:right">${isCustom(i)?'<span class="chip">added in app</span>'
+          :`<button class="gpill ghost sm" onclick="restoreRecipe(${i})">Restore</button>`}</td></tr>`).join('')}</tbody></table>
+    </div>`:''; })()}
 
   <div class="card">
     <div class="ch">Publish to everyone</div>
