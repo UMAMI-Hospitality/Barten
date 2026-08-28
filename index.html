@@ -37,7 +37,9 @@ input,select{font-family:inherit;font-size:inherit}
 .plate .init{font-family:var(--disp);font-weight:600;color:var(--gold);opacity:.72}
 
 /* login */
-#login{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center}
+#login{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 24px;text-align:center;opacity:0;transition:opacity .18s}
+#login.show{opacity:1}
 .crest{width:min(250px,66vw);height:auto;display:block;margin:0 auto 20px}
 .logo-word{height:26px;width:auto;display:block;flex:1;object-fit:contain;object-position:left center;min-width:0}
 .brandsub{font-size:9.5px;letter-spacing:.34em;color:var(--mute);margin:0 0 30px;text-transform:uppercase}
@@ -45,7 +47,8 @@ input,select{font-family:inherit;font-size:inherit}
 .inp{width:100%;padding:15px 17px;background:var(--surf);border:1px solid var(--line);border-radius:14px;color:var(--text);font-size:15px;margin-bottom:10px}
 .inp::placeholder{color:var(--mute2)}
 .pill{display:block;width:100%;padding:15px;background:var(--gold);color:var(--goldink);border-radius:999px;font-weight:700;font-size:14px;margin-top:8px}
-.pill:hover{filter:brightness(1.08)}
+.pill:hover:not([disabled]){filter:brightness(1.08)}
+.pill[disabled]{opacity:.45;cursor:default}
 .err{color:#F08C79;font-size:13px;min-height:19px;margin-top:12px}
 .hint{color:var(--mute2);font-size:11.5px;margin-top:18px;font-family:var(--mono)}
 
@@ -167,9 +170,9 @@ main{flex:1;width:100%;max-width:640px;margin:0 auto;padding:18px 16px 76px}
   <div class="loginbox">
     <input class="inp" id="lu" placeholder="User name" autocomplete="username">
     <input class="inp" id="lp" type="password" placeholder="PIN" autocomplete="current-password">
-    <button class="pill" id="lbtn">Sign in</button>
+    <button class="pill" id="lbtn" disabled>Loading\u2026</button>
     <div class="err" id="lerr"></div>
-    <div class="hint" id="lhint"></div>
+    <div class="hint" id="lhint">Ask Chef Irfan for your user name and PIN</div>
   </div>
 </div>
 
@@ -184,17 +187,28 @@ main{flex:1;width:100%;max-width:640px;margin:0 auto;padding:18px 16px 76px}
 </div>
 
 <script>
+/* =========================================================================
+   WHO CAN SIGN IN
+   Edit this list on GitHub, commit, and everyone gets it on every device.
+   role is 'admin' (can edit recipes) or 'chef' (read only).
+   ========================================================================= */
+const USERS = [
+  { u:'irfan',   p:'2026', role:'admin' },
+  { u:'kitchen', p:'1111', role:'chef'  },
+];
+/* ======================================================================= */
+
 const DATA = {"S":["Appetizers","Salads","Crudos","Ramen","Soba Noodles","Stir-Fry","Main Course","Nigiri","Sashimi","Uramaki","Vegan Uramaki","Special Rolls","Fried Sushi","Sub-Recipes"],"U":["g","kg","l","ml","pc"],"I":["Almond Sliced","Apple Juice","Asparagus","Avocado","Azahir","Baby Corn","Balsamic Vinegar","Bamboo Leaves","Basil Fresh","Bay Leaves","Beef Fillet","Beef Gyoza","Beef Sirloin African","Beef Striploin","Beef Striploin (South African)","Beef Tenderloin","Bell Pepper","Bell Pepper Confit","Black Pepper","Black Sesame","Blueberry","Bok Choy","Broccoli","Butter","Butter Fern","Cabbage","Cabbage White","Capers","Carrot","Caviar","Caviar Masago","Caviar Red (Sushi)","Caviar Sushi","Caviar Tobiko","Celery","Chicken Breast","Chicken Stock Powder","Chili Flakes","Chili Powder","Chili Red","Chives","Cinnamon Stick","Coconut Cream","Coconut Milk","Cooking Cream","Cooking Oil","Coriander","Corn Fresh","Corn Oil","Crab Paste","Crab Stick","Cream Cheese","Cream Cheese (Anchor)","Crispy Onion","Crispy Shallot & Garlic Togarashi","Cucumber","Cumin Powder","Curry Powder","Dashi","Dashi Stock Powder","Dijon Mustard","Dill","Dill Mayo","Edamame","Edible Flowers","Eel","Egg","Eggplant","Fennel Bulb","Fish Sauce","Flour","Fresh Eel (Frozen)","Fresh Ginger","Fresh Red Chili","Fresh Salmon","Fresh Salmon Fillet","Fresh Seabream Whole","Fresh Tuna","Fresh Tuna Fillet","Fresh Tuna Otoro","Fresh White Fish","Frying Oil","Garlic","Garlic Fresh","Garlic Powder","Ginger","Ginger ( Fried)","Ginger Fresh","Glass Noodle","Gochujang","Gochujang Paste","Grapefruit","Green Apple","Green Apple (25% Loss)","Green Onion","Green Peas","Himalayan Salt","Hoisin","Hoisin Sauce","Hondashi","Hondashi (Fish Powder)","Honey","Iceberg","Iceberg Lettuce","Jalapeno","Jalapeno Mayo","Japan Mayonnaise","Jasmine Rice (Cooked)","Kani Stick","Katsoubushi","Kikkoman Soy Sauce","Kimchi Base","Kimchi Paste","Kimchi Vegetables","Knorr Chicken Powder","Korean Chili Powder","Kunafa","Leeks","Lemon","Lemon Juice","Lime Juice","Lobster","Mango","Mayonnaise","Mayonnaise Heinze","Mayonnaise Hellmans","Micro Greens","Microgreens","Minced Beef","Mint","Miso Dark","Miso Paste","Mixed Lettuce","Mushroom","Mushroom Button","Mushroom Shemeiji","Mussels 70%","Mustard Seeds","Nori","Nori Sheet","Octopus","Octopus (Frozen)","Oil Frying","Olive Oil","Onion","Onion Powder","Orange","Orange Juice","Orange Whole","Oyster Sauce","Panko Breadcrumbs","Paprika Powder","Parmesan Cheese","Parmesan Sauce","Peach","Peanut (Roasted & Crushed)","Peanut Butter","Peanuts","Pear","Pickle Ginger","Pistachio","Pommegranate","Pomogranate Molasses","Ponzu Dressing","Ponzu Sauce","Potato","Quinoa (Cooked)","Radish White","Rayeb","Red Bellpepper","Red Caviar Sushi","Red Chili","Red Onion","Red Radish","Red Sushi Caviar","Rice","Rice Flour","Rice Vinegar","Rosemary","Salmon","Salmon Fillet","Salmon Fresh","Salt","Sea Salt","Sesame","Sesame Black","Sesame Oil","Sesame Seeds","Sesame Seeds White","Sesame White","Shemeiji Mushroom","Shrimp","Shrimp 16/20","Shrimp 16/20 (Boiled)","Shrimp 30/40","Shrimp 30/40 (with Shells) 60%","Smoked Salmon","Soba Noodle (Cooked)","Soy Sauce","Soy Sauce Kikkoman","Spicy - Edamame","Spicy Ramen Broth","Spring Onion","Sriracha","Sugar","Sunflower Oil","Sushi Caviar","Sweet Chili Sauce","Swordfish","Tapioca (Boiled)","Tempura Flour","Thyme","Tofu","Tofu (Fried)","Togarashi","Togarashi Powder","Tom Yum Paste","Truffle - Edamame","Truffle Oil","Truffle Paste","Tuna","Tuna \"Sashimi Grade A\"","Tuna Fresh","Tuna Fresh (Seared)","Tuna Saku","Vegetable Gyoza","Vinegar White","Wasabi","Wasabi Paste","Wasabi Powder","Water","White Cabbage / Napa Cabbage","White Fish","White Onion","White Pepper","White Sesame Seeds","White Sugar","White Toast (7 Star) 50%","White Vinegar","Whole Eggs","Yellow Egg Noodle (Cooked)","Yellowtail / White Fish","Zaatar","chili green","coriander leaves","dill","lemon juici","mint leaves","pepper","salt"],"R":[["Beef Gyoza",0,0,[[0,11,4,4],[1,145,3,50],[0,45,3,25]]],["Beef Sashimi",0,0,[[0,14,0,100],[0,237,0,50],[0,218,3,10],[1,141,0,5],[0,23,0,30],[1,163,0,10],[0,126,0,2],[1,129,0,80],[0,4,0,1],[0,45,3,50]]],["Beef Teriyaki",0,0,[[0,10,0,150],[1,112,0,50],[0,5,0,30],[1,154,0,50],[0,187,0,2],[0,40,0,2],[0,4,0,1],[0,44,3,20],[0,23,0,10],[0,45,3,50]]],["Crispy Kimchi Shrimp Balls",0,0,[[1,151,0,100],[0,191,0,100],[0,182,0,2],[0,18,0,1],[1,121,0,80],[0,150,0,30],[1,153,0,30],[0,70,0,10],[0,81,3,50],[1,117,0,50],[0,55,0,20],[0,127,0,2],[0,64,0,1],[1,122,3,20]]],["Edamame",0,0,[[0,63,0,140],[0,183,0,5],[0,4,0,1],[0,200,0,0],[1,122,3,50],[0,214,0,1],[0,217,0,0],[0,218,3,10],[0,152,0,15]]],["Korean Chicken",0,0,[[0,35,0,200],[0,182,0,5],[0,234,0,3],[1,106,3,25],[0,70,0,10],[0,150,0,50],[0,40,0,2],[0,7,4,1],[0,4,0,1],[0,187,0,2],[1,122,3,120],[0,81,3,100]]],["Nori Tacos Salmon",0,0,[[1,151,0,80],[0,139,4,0.5],[0,179,0,80],[1,102,0,20],[0,29,0,5],[0,127,0,2],[0,64,0,1]]],["Nori Tacos Shake Ebi",0,0,[[1,151,0,80],[0,139,4,0.5],[0,181,0,40],[0,193,0,40],[0,203,0,10],[0,186,3,5],[0,187,0,1],[0,94,0,1],[1,154,3,3],[1,116,0,3],[0,70,0,10],[1,153,0,10],[0,81,3,50]]],["Nori Tacos Tuna",0,0,[[1,151,0,80],[0,139,4,0.5],[0,220,0,80],[1,140,0,20],[0,203,0,10],[0,94,0,1],[0,29,0,5]]],["Rock Shrimp",0,0,[[0,195,0,150],[1,124,0,10],[1,148,0,40],[0,150,0,30],[1,153,0,30],[0,70,0,10],[0,40,0,2],[0,4,0,1],[0,7,4,1],[0,184,0,1],[0,81,3,50]]],["Shichimi Grilled Corn",0,0,[[0,47,0,250],[0,23,0,25],[0,214,0,10],[0,182,0,5],[0,234,0,3],[0,4,0,1]]],["Spicy Salmon Tartare",0,0,[[1,151,0,100],[0,181,0,80],[0,3,0,60],[0,203,0,5],[0,164,0,5],[0,174,0,2],[0,127,0,1],[0,64,0,1],[0,159,0,20],[0,81,3,50]]],["Vegetable Gyoza",0,0,[[0,225,4,4],[1,145,3,50],[0,45,3,25]]],["Wasabi Shrimp Tempura",0,0,[[0,193,4,5],[0,70,0,10],[1,153,0,80],[1,163,0,20],[0,7,4,1],[0,4,0,1],[0,81,3,50]]],["Barten Steak Salad",1,0,[[0,14,0,120],[0,132,0,50],[0,55,0,20],[0,146,4,1],[0,144,0,5],[0,171,0,5],[0,157,0,30],[0,127,0,2],[0,64,0,1],[0,129,0,2],[0,46,0,2],[1,125,0,60]]],["Crab Salad",1,0,[[0,50,0,80],[0,55,0,50],[0,28,0,40],[0,186,3,5],[0,164,3,10],[0,187,0,2],[0,170,0,2],[0,4,0,1],[1,116,0,10],[1,148,0,50],[0,40,0,2]]],["Glass Noodle Salad",1,0,[[0,88,0,150],[0,164,3,100],[0,214,0,5],[0,28,0,50],[0,55,0,50],[0,154,0,50],[0,187,0,5],[0,4,0,1]]],["Pear & Chicken Salad",1,0,[[0,35,0,120],[0,182,0,5],[0,18,0,2],[0,151,0,5],[0,84,0,2],[0,145,0,2],[0,26,0,150],[1,138,0,100],[0,3,0,75],[0,143,3,20],[0,46,0,2],[0,94,0,10],[1,133,3,90],[0,0,0,25],[0,187,0,5],[0,53,0,20]]],["Salmon Tartare",1,0,[[0,181,0,120],[0,3,0,90],[0,203,0,10],[0,164,0,5],[0,174,0,5],[1,141,0,10],[1,161,3,5],[0,159,0,10],[1,143,3,25],[1,103,3,2],[0,126,0,2],[1,163,0,5]]],["Beef Sashimi",2,0,[[0,10,0,120],[0,54,0,25],[0,94,0,5],[0,40,0,2],[0,187,0,2],[0,139,4,0.25],[1,158,3,45]]],["Salmon Crudos",2,0,[[0,181,0,100],[1,114,0,50],[0,148,0,100],[0,161,0,20],[1,144,3,60],[1,103,3,20]]],["Tuna Crudos",2,0,[[0,222,0,100],[1,139,0,80],[1,109,3,60],[0,126,0,1],[0,64,0,1],[1,119,0,15],[1,103,3,20]]],["Tuna Tartare",2,0,[[0,221,0,120],[0,203,0,10],[0,198,3,10],[0,120,3,5],[0,219,0,3],[0,40,0,2],[0,172,0,10],[0,204,0,2],[1,116,0,10],[0,218,3,3],[0,143,3,20],[0,127,0,1],[0,64,0,1]]],["Tuna Tataki",2,0,[[0,222,0,100],[1,163,0,25],[0,170,0,2],[1,141,0,2],[1,143,3,25],[1,103,3,2],[0,55,0,10],[0,4,0,1],[0,126,0,1],[0,48,3,30],[0,182,0,3],[0,18,0,1],[0,164,3,10]]],["Creamy Coconut Shrimp Ramen",3,0,[[0,240,0,180],[1,108,3,200],[1,136,3,50],[0,194,4,6],[1,155,3,10],[0,235,0,1],[0,202,0,2],[0,239,4,1],[0,134,0,30],[0,21,0,30],[0,45,3,80]]],["Miso Tofu Ramen",3,0,[[0,240,0,180],[0,201,3,200],[0,139,4,0.5],[0,212,0,100],[1,155,3,10],[0,235,0,1],[0,202,0,2]]],["Spicy Beef Ramen Noodle",3,0,[[0,240,0,180],[0,201,3,200],[0,239,4,1],[0,139,4,0.5],[1,127,0,100],[1,155,3,10],[0,235,0,1],[0,202,0,2]]],["Shrimp & Mussel Noodle",4,0,[[0,197,0,180],[0,194,0,85],[0,136,0,20],[1,156,3,250],[0,218,3,15],[0,4,0,1],[1,103,0,20],[0,48,3,30],[0,83,0,3],[0,87,0,10],[0,172,0,20],[0,126,0,2]]],["Vegetable Soba Noodle",4,0,[[0,197,0,180],[0,134,0,20],[0,135,0,5],[0,28,0,15],[0,2,0,20],[0,22,0,25],[1,160,3,75],[0,186,3,5],[0,127,0,1],[0,4,0,1],[0,5,0,25]]],["Chicken Mizaki",5,0,[[0,35,0,150],[0,144,0,40],[0,16,0,40],[0,22,0,40],[0,134,0,40],[0,5,0,25],[1,160,3,75],[0,186,3,5],[0,187,0,1],[0,40,0,1],[0,4,0,1],[0,28,0,20],[0,238,3,10]]],["Garlic Rice",5,0,[[0,107,0,200],[0,110,3,20],[0,149,0,10],[0,186,3,5],[0,204,0,5],[0,87,0,5],[0,83,0,5],[0,172,0,10],[0,16,0,25],[0,48,3,30],[0,4,0,1],[0,187,0,1]]],["Garlic Rice (Beef)",5,0,[[0,107,0,200],[0,110,3,20],[0,149,0,10],[0,186,3,2],[0,204,0,2],[0,87,0,5],[0,83,0,5],[0,172,0,10],[0,16,0,20],[0,48,3,30],[0,4,0,1],[0,187,0,1],[0,10,0,80]]],["Garlic Rice (Chicken)",5,0,[[0,107,0,200],[0,110,3,20],[0,149,0,15],[0,186,3,5],[0,204,0,5],[0,87,0,5],[0,83,0,5],[0,172,0,10],[0,16,0,20],[0,48,3,30],[0,4,0,1],[0,187,0,1],[0,35,0,80]]],["Garlic Rice (Shrimp)",5,0,[[0,107,0,200],[0,110,3,20],[0,149,0,15],[0,186,3,5],[0,204,0,5],[0,87,0,5],[0,83,0,5],[0,172,0,10],[0,16,0,20],[0,48,3,30],[0,4,0,1],[0,187,0,1],[0,194,0,80]]],["Garlic Soy Shrimp",5,0,[[0,194,0,120],[0,144,0,20],[0,16,0,40],[0,22,0,40],[0,134,0,40],[0,5,0,25],[1,160,3,75],[1,150,3,75],[0,186,3,5],[0,187,0,1],[0,40,0,1],[0,4,0,1],[0,28,0,20]]],["Steam Rice",5,0,[[0,107,0,200],[0,187,0,1],[0,4,0,1],[0,40,0,1]]],["Stir Fried Beef",5,0,[[0,10,0,170],[0,144,0,40],[0,16,0,50],[0,22,0,40],[0,134,0,30],[0,5,0,25],[1,150,3,150],[0,186,3,5],[0,187,0,2],[0,40,0,2],[0,4,0,1],[0,149,0,20],[0,45,3,30]]],["Stir Fried Vegetables",5,0,[[0,135,0,20],[0,144,0,20],[0,16,0,40],[0,22,0,40],[0,2,0,20],[0,134,0,40],[0,5,0,25],[1,160,3,150],[0,186,3,5],[0,187,0,1],[0,40,0,1],[0,4,0,1],[0,28,0,40]]],["Beef Fillet",6,0,[[0,10,0,210],[1,126,0,200],[0,2,0,25],[0,28,0,15],[0,22,0,25],[0,190,0,5],[0,44,3,15],[0,23,0,5],[0,211,0,2],[0,178,0,2],[1,150,3,40],[1,154,3,25],[0,5,0,25],[0,48,3,25],[0,182,0,10],[0,18,0,5],[0,96,0,5]]],["Charred Grilled Swordfish",6,0,[[0,208,0,150],[1,140,3,60],[0,45,3,30],[0,182,0,3],[0,18,0,2],[1,101,0,45],[1,142,0,80],[0,86,0,20]]],["Kani Furikake Shrimp Risotto",6,0,[[1,151,0,80],[0,108,0,40],[0,24,0,50],[0,172,0,5],[0,82,0,5],[0,44,3,30],[1,111,3,60],[0,230,3,60],[0,40,0,2],[1,115,0,5],[1,122,3,20],[0,192,4,4],[0,186,3,5],[0,45,3,30]]],["Miso Striploin Steak",6,0,[[0,13,0,190],[1,128,0,80],[1,162,0,120],[0,21,0,40],[1,146,3,60],[0,182,0,3],[0,18,0,2],[0,45,3,50],[0,23,0,30]]],["New Beef Fillet",6,0,[[0,10,0,200],[1,126,0,120],[1,137,0,100],[0,54,0,20],[0,40,0,2],[0,85,0,20]]],["Salmon Fillet",6,0,[[0,180,0,190],[0,94,0,20],[0,28,0,20],[0,83,0,5],[0,211,0,2],[0,178,0,2],[0,170,0,5],[1,112,0,120],[0,4,0,1],[0,126,0,2],[0,5,0,25],[0,48,3,30],[0,182,0,10],[0,18,0,5],[0,2,0,10],[0,190,0,5],[0,22,0,25],[1,163,0,5]]],["Three Texture Potato",6,0,[[1,126,0,300],[0,43,3,150],[0,150,0,20],[1,153,3,20],[0,70,0,5],[1,103,3,5],[0,5,0,25],[0,22,0,25],[0,190,0,10],[0,28,0,20],[0,2,0,25],[0,48,3,30],[0,182,0,3],[0,234,0,1],[0,4,0,1]]],["Vegetarian Bibimbap",6,0,[[1,35,0,200],[1,113,0,40],[1,110,0,40],[1,105,0,40],[0,21,0,30],[0,213,0,30],[0,81,3,50],[0,187,0,2],[0,182,0,3],[0,18,0,2]]],["Yakiniku Steak",6,0,[[0,13,0,190],[1,112,0,100],[0,22,0,25],[0,2,0,25],[0,28,0,25],[0,5,0,20],[0,190,0,5],[1,150,3,75],[1,154,3,25],[0,96,0,5],[0,48,3,30],[0,182,0,10],[0,18,0,5],[0,164,3,40],[0,44,3,10],[0,126,0,2]]],["Eel Nigiri",7,0,[[1,104,0,40],[1,151,0,40],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,1],[0,139,4,0.25]]],["Octopus Nigiri",7,0,[[0,140,0,40],[1,151,0,40],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,1],[1,123,0,5],[0,32,0,5],[1,131,3,5],[0,139,4,0.25]]],["Salmon Nigiri",7,0,[[0,75,0,30],[1,151,0,40],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,1],[0,32,0,1]]],["Shrimp Nigiri",7,0,[[0,194,4,2],[1,151,0,40],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,1]]],["Tuna Nigiri",7,0,[[0,78,0,30],[1,151,0,40],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,1]]],["Tuna Otoro",7,0,[[0,79,0,30],[1,151,0,40],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,1]]],["Vegan Nigiri",7,0,[[0,17,0,40],[1,151,0,40],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,1]]],["White Fish Nigiri",7,0,[[0,76,0,40],[1,151,0,40],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,1],[1,131,3,5]]],["Salmon Sashimi",8,0,[[0,75,0,100],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,2]]],["Tuna Otoro",8,0,[[0,79,0,100],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,2]]],["Tuna Sashimi",8,0,[[0,78,0,100],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,2]]],["White Fish Sashimi",8,0,[[0,80,0,85],[0,227,0,10],[0,159,0,20],[0,198,3,45],[0,7,4,2]]],["California Roll",9,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,50,0,30],[0,55,0,20],[0,3,0,15],[1,116,0,10],[0,181,0,30],[0,94,0,5],[0,32,0,5],[0,203,0,10],[0,164,0,5]]],["Green Dragon Roll",9,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,193,0,50],[0,55,0,20],[0,3,0,20],[1,148,0,20],[1,154,3,15],[1,116,0,15],[0,70,0,10],[1,153,0,5],[0,81,3,100]]],["Kani Maki",9,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,181,0,20],[0,193,0,30],[0,55,0,15],[0,3,0,5],[1,148,0,10],[0,196,0,25],[0,70,0,10],[1,153,0,25],[0,203,0,10],[0,186,3,5],[0,81,3,50]]],["Razu Roll",9,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,193,0,40],[0,3,0,15],[0,181,0,25],[0,196,0,25],[0,20,0,5],[1,148,0,10],[0,203,0,5],[0,186,3,1],[0,187,0,2]]],["Smoked Salmon Philidelphia",9,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,181,0,45],[0,196,0,30],[0,51,0,30],[0,55,0,15],[0,3,0,15],[1,154,3,10],[0,187,0,2]]],["Spicy Tuna Roll",9,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,224,0,75],[0,55,0,20],[0,223,0,30],[1,148,0,20],[0,94,0,5],[0,164,3,10]]],["Asparagus Roll",10,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,2,0,15],[0,55,0,20],[0,3,0,20],[0,104,0,5],[1,103,3,2],[1,161,3,5],[0,28,0,20],[0,188,0,10]]],["Karokke",10,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[1,126,0,50],[0,150,0,50],[1,153,0,50],[0,70,0,10],[0,2,0,15],[0,55,0,20],[0,3,0,20],[0,104,0,5],[1,103,3,2],[0,187,0,5],[0,28,0,20],[1,154,3,10]]],["Miso Eggplant",10,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,2,0,15],[0,55,0,20],[0,3,0,15],[1,154,0,10],[0,67,0,20],[0,28,0,25],[0,188,0,5],[0,130,0,5]]],["Shugisha",10,0,[[1,151,0,60],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,51,0,20],[0,103,0,10],[0,55,0,20],[0,28,0,20],[0,3,0,10],[0,70,0,10],[1,153,0,20],[1,154,3,10],[0,188,0,2]]],["Akuma Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,77,0,60],[0,3,0,20],[0,63,0,20],[0,203,0,10],[0,218,3,5],[0,73,0,5],[0,172,0,2],[1,115,0,10]]],["Black Tiger",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,179,0,40],[0,220,0,40],[0,192,4,2],[0,102,0,20],[0,19,0,10],[1,102,0,20]]],["Dill Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,192,4,2],[0,55,0,15],[0,220,0,30],[0,62,0,20]]],["Ebi Niku",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,193,0,50],[0,12,0,80],[0,55,0,15],[0,3,0,15],[1,135,0,10],[0,51,0,5],[1,154,0,10],[0,160,0,5],[1,153,0,10],[1,140,3,5],[0,81,3,100]]],["Ebi Remon",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,232,0,20],[0,194,4,2],[0,179,0,20],[0,3,0,20],[0,192,4,2],[1,153,0,10],[0,81,3,50],[1,123,0,20],[0,29,0,5]]],["Fire-Red",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,192,4,2],[0,74,0,25],[0,3,0,15],[0,50,0,20],[1,148,0,25],[0,186,3,2],[0,196,0,20],[0,73,0,5]]],["Geisha",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,193,4,1],[0,55,0,15],[0,3,0,15],[1,116,0,15],[1,153,3,10],[0,74,0,30],[1,148,0,15],[0,81,3,50]]],["Hikari Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,241,0,50],[0,49,0,30],[0,55,0,20],[0,3,0,20],[0,103,0,10],[0,187,0,5],[0,186,3,5],[0,119,3,5],[0,172,0,5],[0,94,0,3]]],["Kani Smoked",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,192,4,2],[1,153,0,10],[0,81,3,50],[0,55,0,20],[0,3,0,25],[0,108,0,40],[0,207,3,35],[0,196,0,45],[0,27,0,5],[1,148,0,20]]],["King Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,74,0,20],[0,77,0,20],[0,192,4,2],[0,2,0,10],[0,3,0,15],[0,105,0,10]]],["Kumo Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,50,0,20],[0,3,0,15],[0,55,0,15],[0,74,0,35],[0,153,0,50],[0,94,0,5]]],["Lobster Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,121,0,90],[0,181,0,30],[0,55,0,15],[0,3,0,15],[1,123,0,10],[0,222,0,15],[1,161,0,10]]],["New Style California",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,192,4,2],[1,153,0,10],[0,81,3,50],[0,108,0,20],[0,3,0,20],[0,181,0,35],[0,29,0,5],[1,157,0,20],[1,154,3,10]]],["Raiko Unagi Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,65,0,40],[0,192,4,2],[1,153,3,20],[0,81,3,50],[0,50,0,30],[0,3,0,20],[1,154,3,10],[0,187,0,3],[1,107,0,30]]],["Red FIre",11,0,[[1,151,0,50],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,50,0,30],[0,220,0,50],[0,123,0,30],[1,141,0,10]]],["Red Velvet",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,50,0,35],[0,55,0,20],[0,181,0,35],[1,104,0,35],[1,154,3,20],[1,148,0,15],[0,206,0,3],[0,94,0,2]]],["Rock Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,192,4,2],[0,65,0,30],[0,55,0,15],[0,3,0,15],[1,154,3,10],[0,187,0,3]]],["Salmon Truffle Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,181,0,30],[0,193,4,1],[0,196,0,25],[0,55,0,15],[1,157,0,5]]],["Sky Kani",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,192,4,2],[1,153,0,10],[0,81,3,50],[0,3,0,20],[0,50,0,40],[1,148,0,20],[1,116,0,15],[1,154,3,10],[0,29,0,4]]],["Spicy Philidelpia Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,181,0,60],[0,196,0,40],[0,51,0,40],[0,55,0,20],[0,3,0,20],[1,154,3,20],[0,187,0,5],[1,148,0,25]]],["Takumi Roll",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,192,4,2],[0,55,0,15],[0,33,0,20],[1,22,0,50],[0,94,0,5]]],["Tekkamaki",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,50,0,30],[0,55,0,5],[0,28,0,5],[0,3,0,15],[1,148,0,15],[0,222,0,30],[0,203,0,5],[0,186,3,3],[0,187,0,2],[0,181,0,20],[1,153,0,10],[0,150,0,5],[0,81,3,100]]],["Tomyum",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,192,4,2],[0,196,0,15],[0,3,0,20],[1,116,0,20],[0,194,4,4],[1,156,0,30]]],["Tuna Golden",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,192,4,2],[1,153,0,10],[0,81,3,50],[0,30,0,20],[0,220,0,40],[0,203,0,20],[0,186,3,5],[1,154,0,20],[1,116,0,20]]],["Tunacado",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,220,0,40],[0,192,4,2],[0,116,0,10],[0,81,3,50],[0,3,0,20],[1,148,0,10],[1,147,0,20]]],["Volcano",11,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,220,0,40],[0,50,0,20],[0,191,0,50],[0,3,0,20],[1,148,0,15],[0,29,0,4],[0,214,0,4],[1,116,0,15],[1,153,0,10],[0,81,3,50]]],["Chizu Shake",12,0,[[1,151,0,80],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,50,0,10],[0,192,4,1],[0,51,0,20],[0,179,0,30],[0,207,3,20],[0,186,3,5],[0,94,0,2],[0,29,0,2],[1,153,0,50],[0,81,3,50],[0,187,0,2],[1,154,0,10],[0,171,0,2]]],["Colossal",12,0,[[1,151,0,60],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[1,104,0,20],[0,50,0,25],[0,193,4,1],[0,181,0,15],[1,153,0,15],[0,70,0,10],[1,100,0,15],[0,23,0,10],[0,81,3,50]]],["Deep Fried Crispy",12,0,[[1,151,0,100],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,51,0,20],[0,196,0,25],[0,193,4,1],[0,70,0,5],[1,153,0,20],[0,81,3,100],[0,150,0,50],[1,148,0,20],[1,154,3,10],[0,94,0,5],[0,187,0,2]]],["Golden Dragon Roll",12,0,[[1,151,0,60],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,32,0,3],[1,148,0,20],[1,154,3,15],[0,187,0,2],[0,193,4,1],[1,153,0,20],[0,81,3,50]]],["Unagi",12,0,[[1,151,0,60],[0,138,4,0.5],[0,227,0,10],[0,159,0,20],[0,110,3,45],[0,193,4,1],[1,104,0,35],[0,55,0,15],[1,154,3,15],[1,153,0,20],[0,187,0,2],[0,81,3,50]]],["Anticucho",13,1,[[1,152,3,150],[0,56,0,40],[0,207,0,30],[0,83,0,10],[0,110,3,25],[0,211,0,10],[0,48,3,120],[0,123,0,500]]],["Asian Salsa Verde",13,1,[[0,46,0,50],[0,202,0,40],[0,61,0,10],[0,82,0,5],[1,152,3,30],[0,120,3,20],[0,182,0,3]]],["Basil Mayo",13,1,[[0,123,0,200],[0,8,0,50],[0,119,3,20],[0,82,0,5],[0,182,0,5],[0,18,0,2]]],["Basil Oil",13,1,[[0,48,2,1],[0,8,0,150]]],["BBQ Eel",13,1,[[0,71,1,5],[0,110,2,1],[0,87,0,100],[0,83,0,20],[0,149,0,20],[0,234,0,5],[1,154,3,50]]],["Cabbage Pickle",13,1,[[0,25,0,400],[0,230,3,100],[0,204,0,100],[0,238,3,100],[0,215,0,10]]],["Chicken Marination",13,1,[[0,168,3,350],[0,66,4,4],[0,87,0,20],[0,83,0,20],[0,214,0,25]]],["Chimichurri Mayo",13,1,[[0,106,0,300],[0,247,0,100],[0,244,0,100],[0,243,0,50],[0,246,3,75],[0,249,0,10],[0,248,0,5],[0,245,0,20]]],["Creamy Coconut Base",13,1,[[0,82,0,15],[0,202,0,50],[0,57,0,15],[0,37,0,3],[0,230,3,300],[0,114,0,25],[0,120,3,20],[0,42,3,125],[0,45,3,50],[0,155,0,80]]],["Cucumber & Apple Vinaigrette",13,1,[[0,55,0,100],[0,92,0,80],[0,1,3,100],[1,152,3,30],[0,182,0,2]]],["Cucumber Pickle",13,1,[[0,55,0,400],[0,198,3,100],[0,204,0,100],[0,238,3,100],[0,215,0,10]]],["Dashi Stock",13,1,[[0,230,3,1000],[0,59,0,25],[0,36,0,10]]],["Edamame Puree",13,1,[[0,63,0,500],[0,22,0,500],[0,44,3,300],[0,23,0,50],[0,182,0,10],[0,234,0,5]]],["Eggplant Teriyaki",13,1,[[0,67,0,400],[0,81,3,100],[1,154,3,30]]],["Fennel & Citrus Salad",13,1,[[0,68,0,100],[0,148,0,100],[0,91,0,120],[0,61,0,2],[0,182,0,2]]],["Furikake",13,1,[[0,109,0,30],[0,138,4,2],[0,214,0,30],[0,99,0,15],[0,189,0,30],[0,185,0,30],[0,204,0,30],[0,182,0,10],[1,152,3,15],[0,198,3,15],[0,186,3,10]]],["Geisha",13,1,[[0,150,1,1],[0,142,2,500]]],["Gochujang Aioli",13,1,[[0,123,0,150],[0,89,0,50],[1,152,3,30],[0,215,0,5],[0,204,0,5]]],["Gochujang Parmesan Mayo",13,1,[[0,123,0,500],[0,23,0,100],[0,152,0,120],[0,110,0,10],[0,100,0,5],[0,89,0,40]]],["Honey Mustard Dressing",13,1,[[0,123,0,100],[0,60,0,30],[0,101,0,30],[0,204,0,30],[0,186,3,10]]],["Kewpie Mayo",13,1,[[0,125,0,3000],[0,58,0,60],[0,60,0,35],[0,177,3,240],[0,204,0,60]]],["Kimchi",13,1,[[0,111,0,0],[0,230,3,450],[0,176,0,40],[0,236,0,40],[0,112,0,0],[0,82,0,50],[0,85,0,50],[0,144,0,100],[0,69,0,120],[0,115,0,120],[0,93,0,150],[0,113,0,0],[0,231,1,3],[0,28,0,500],[0,167,0,500],[0,94,0,250]]],["Korean Sauce",13,1,[[0,101,0,550],[0,89,3,650],[0,110,3,300],[0,204,0,500],[0,83,0,50],[0,87,0,200],[0,48,3,100],[0,186,3,100]]],["Lemon Mayo",13,1,[[0,125,0,150],[0,46,0,30],[0,34,0,30],[0,82,0,25],[0,72,0,20],[0,169,0,10],[0,119,3,100],[0,99,0,10],[0,182,0,5],[0,48,3,80]]],["Marination Rock Shrimp",13,1,[[0,83,0,100],[0,186,3,100],[0,87,0,50],[0,182,0,5]]],["Marination Striploin",13,1,[[0,82,0,10],[0,69,3,30],[0,149,3,30],[0,204,0,30]]],["Mashed Potato",13,1,[[0,165,1,1],[0,44,3,300],[0,23,0,100],[0,182,0,30],[0,234,0,10]]],["Minced Beef (Prep)",13,1,[[0,128,0,400],[0,172,0,50],[0,82,0,10],[0,149,0,30],[0,198,0,5],[0,204,0,10],[0,18,0,1],[0,182,0,1]]],["Miso Glazed",13,1,[[0,131,0,80],[1,152,3,50],[0,204,0,100],[0,198,3,20],[0,45,3,100]]],["Miso Sauce",13,1,[[0,131,0,200],[0,15,0,100],[0,134,0,250],[0,172,0,50],[0,82,0,20],[0,44,2,1],[0,211,0,5],[0,182,0,5],[0,234,0,3]]],["Nahm Jim Dressing",13,1,[[0,69,3,100],[0,204,0,100],[0,120,0,100],[0,205,3,200],[0,38,0,15],[0,82,0,20]]],["Nikiri Sauce",13,1,[[0,199,3,235],[0,177,3,235],[1,111,3,50]]],["Octopus Cooked",13,1,[[0,141,1,1],[0,28,0,100],[0,34,0,100],[0,117,0,50],[0,233,0,50],[0,118,0,100],[0,9,0,2],[0,211,0,5],[0,178,0,5],[0,230,2,3]]],["Orange Dressing",13,1,[[0,186,3,240],[0,101,0,200],[0,198,3,230],[1,152,3,175],[0,85,0,75],[0,146,0,150],[0,119,3,10]]],["Parmesan Mayo",13,1,[[0,123,0,500],[0,23,0,100],[0,152,0,120],[0,110,0,10],[0,100,0,5]]],["Peanut Butter Sauce",13,1,[[0,156,0,100],[0,52,0,200],[1,154,3,150]]],["Peanut Tare",13,1,[[0,156,0,100],[0,198,3,50],[0,204,0,50],[0,120,3,25]]],["Peas & Mushroom",13,1,[[0,95,0,100],[0,133,0,150],[0,172,0,30],[0,82,0,5],[0,198,3,30],[0,149,3,60],[0,204,0,30],[0,44,3,60],[0,230,3,30]]],["Pickle Pear",13,1,[[0,158,0,500],[0,204,0,200],[0,182,0,5],[0,159,0,10],[1,152,3,200],[0,120,3,25]]],["Pickle Radish",13,1,[[0,173,0,50],[0,28,0,30],[0,94,0,30],[0,238,3,50],[0,230,3,50],[0,204,0,50],[0,182,0,2]]],["Ponzu",13,1,[[0,199,3,250],[0,119,3,250],[0,147,3,250],[0,204,0,250],[0,72,0,25]]],["Ponzu Caviar",13,1,[[0,163,3,100],[0,209,0,100]]],["Ponzu Quinoa",13,1,[[0,166,0,250],[0,172,0,80],[0,40,0,5],[0,162,3,50],[1,140,3,50],[0,143,3,40],[0,182,0,3],[0,18,0,2]]],["Sour Cream",13,1,[[0,168,3,400],[0,120,3,10],[0,83,0,5],[0,44,3,200]]],["Soy Citrus Vinaigrette",13,1,[[0,148,0,100],[1,152,3,25],[0,198,3,25],[0,204,0,15],[0,205,3,50]]],["Soy Rice Vinegar Dip",13,1,[[0,198,0,250],[1,152,0,250],[0,85,3,10],[0,82,0,5],[0,94,0,25],[0,186,3,5],[0,187,0,25],[0,214,0,25]]],["Soy Truffle Butter",13,1,[[0,131,0,60],[1,152,3,30],[0,204,0,80],[0,198,3,20],[0,23,3,100],[0,44,3,100],[0,219,0,10]]],["Spicy Mango Chutney",13,1,[[0,122,0,200],[0,39,0,50],[0,41,4,1],[0,137,0,15],[1,152,3,100],[0,204,0,80],[0,182,0,3]]],["Spicy Mayo",13,1,[[0,125,1,3],[0,203,0,600],[0,214,0,70],[0,207,0,200],[0,31,0,50]]],["Spicy Miso Base",13,1,[[0,90,0,80],[0,131,0,260],[1,152,3,30],[0,99,0,1],[0,233,0,40],[0,82,0,10],[0,85,0,10],[0,204,0,10]]],["Stir Fry Sauce",13,1,[[0,98,0,750],[0,110,3,250],[0,87,0,60],[0,230,3,400],[0,204,0,50]]],["Sushi Rice",13,1,[[0,175,1,1],[0,230,2,1],[1,152,2,250]]],["SUSHI Vinegar",13,1,[[0,177,2,1],[0,204,0,750],[0,182,0,20]]],["Tempura Batter",13,1,[[0,210,1,1],[0,230,2,1]]],["Teriyaki Sauce",13,1,[[0,110,2,2],[0,230,2,2],[0,204,1,1],[0,148,4,1],[0,85,0,100],[0,28,0,100]]],["Togarashi Oil",13,1,[[0,215,0,30],[0,172,0,100],[0,82,0,20],[0,182,0,5],[0,187,0,3],[0,45,3,100]]],["Tom Yum Sauce",13,1,[[0,216,0,50],[0,87,0,30],[0,83,0,25],[0,6,3,10],[0,44,3,500],[0,204,0,5],[0,218,3,15]]],["Truffle Mayo",13,1,[[0,124,0,100],[0,219,0,10]]],["Truffle Tozasu Dressing",13,1,[[1,140,3,60],[0,219,0,5],[0,218,3,2]]],["Umami Mayo",13,1,[[0,123,0,100],[0,149,0,30],[0,198,3,20],[0,204,0,50],[0,120,3,15],[0,230,3,30],[0,187,0,5]]],["Vegan Sauce",13,1,[[0,207,2,1],[0,97,0,120],[0,110,3,50],[0,87,0,50],[0,230,3,400]]],["Vinaigrette",13,1,[[0,119,3,500],[0,55,0,200],[0,242,0,5],[0,182,0,10],[0,226,3,50],[0,204,0,25],[0,143,0,150]]],["Wasabi Mashed Potato",13,1,[[0,165,1,1],[0,44,3,300],[0,23,0,100],[0,182,0,30],[0,234,0,10],[0,228,0,40]]],["Wasabi Mayo",13,1,[[0,123,0,750],[0,229,0,100],[1,152,3,500]]]],"M":[295,730,480,0,350,335,590,350,350,630,0,0,230,0,0,380,0,0,890,0,0,0,540,0,550,0,500,720,500,0,250,0,0,0,700,230,790,250,0,0,650,0,0,0,0,450,0,295,400,500,330,330,450,195,295,670,695,490,550,520,330,0,0,730,520,0,240,220,230,560,0,0,0,550,0,0,500,0,0,600,0,0,690,0,0,0,0,0,0,750,0,650,0,0,0,490,0,590,390,530,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"MN":["BEEF GYOZA","BEEF SASHIMI","BEEF TERIYAKI","","EDAMAME (Sea Salt)","KOREAN CHICKEN","BARTEN TACOS — SALMON","BARTEN TACOS — SHAKE EBI","BARTEN TACOS — TUNA","ROCK SHRIMPS","","","VEGETABLE GYOZA","","","CRAB SALAD","","","SALMON TARTARE","","","","TUNA TARTARE","","SHRIMP COCONUT RAMEN","","SPICY MISO BEEF RAMEN","SHRIMP & MUSSELS SOBA NOODLES","VEGETABLES SOBA NOODLES","","GARLIC RICE","","","","GARLIC SOY SHRIMP","STEAMED RICE","STIR FRIED BEEF","STIR FRIED VEGETABLES","","","KANI FURIKAKE SHRIMP RISOTTO","","","","","BIBIMBAP","","NIGIRI UNAGI (2 pc)","NIGIRI OCTOPUS (2 pc)","NIGIRI SHAKE (2 pc)","NIGIRI EBI (2 pc)","NIGIRI MAGURO (2 pc)","NIGIRI OTORO (2 pc)","NIGIRI VEGAN (2 pc)","NIGIRI SUZUKI (2 pc)","SASHIMI SHAKE (4 pc)","SASHIMI OTORO (4 pc)","SASHIMI MAGURO (4 pc)","SASHIMI SUZUKI (4 pc)","CALIFORNIA ROLL","GREEN DRAGON ROLL","","","SMOKED SALMON PHILADELPHIA ROLL","SPICY TUNA ROLL","","KOROKEE","MISO EGGPLANT","FRIED SHUGISHA","AKUMA ROLL","","","","EBI REMON","","","HIKARI ROLL","","","KUMO ROLL","","","RAIKŌ UNAGI ROLL","","","","","","","TAKUMI ROLL","","TOM YUM","","","","CHIZU SHAKE","","DEEP FRIED CRISPY","GOLDEN DRAGON","UNAGI","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],"MO":[["EDAMAME — Spicy Togarashi","Appetizers",350],["EDAMAME — Truffle oil & Parmesan","Appetizers",395],["PANKO SHRIMP","Appetizers",500],["BEEF ONIGIRI","Appetizers",400],["KIMCHI ONIGIRI","Appetizers",300],["GYU TOAST","Appetizers",450],["WAKAME & CUCUMBER SALAD","Salads",320],["CRUNCHY-SLAW CHICKEN SALAD","Salads",450],["KAISEN-ZUKE HIRAMASA","Kaisen-Zuke",470],["KAISEN-ZUKE SALMON","Kaisen-Zuke",790],["BEEF - KIMCHI","Kaisen-Zuke",580],["HIRAMASA RAMEN","Ramen",700],["CLAMS & CALAMARI YAKI-SOBA","Soba Noodles",730],["CRISPY BEEF","Stir Fry",720],["CRISPY GOCHUJANG CHICKEN","Stir Fry",500],["GARLIC RICE + chicken","Stir Fry",400],["GARLIC RICE + beef","Stir Fry",450],["GARLIC RICE + shrimp","Stir Fry",400],["SHAKE DON","Don Bowl",960],["BEEF DON","Don Bowl",550],["BIBIMBAP + chicken","Don Bowl",450],["BIBIMBAP + beef","Don Bowl",480],["BIBIMBAP + shrimp","Don Bowl",550],["STRIPLOIN STEAK","Main Dish",1200],["BEEF FILLET","Main Dish",770],["DUCK TSUKUNE","Main Dish",490],["CHARRED GRILLED FISH (C.O.D)","Main Dish",760],["CHARRED OCTOPUS","Main Dish",710],["GUNKAN SHAKE (2 pc)","Gunkan",530],["GUNKAN MAGURO (2 pc)","Gunkan",490],["GUNKAN SUZUKI (2 pc)","Gunkan",480],["MOMO SUSHI (20 pc)","Sushi Selection",1400],["BARTEN SUSHI (42 pc)","Sushi Selection",2800],["SUSHI MONDAY 24 pc","Sushi Selection",1200],["SUSHI MONDAY 40 pc","Sushi Selection",1900],["SUSHI MONDAY 64 pc","Sushi Selection",2900],["SUSHI MONDAY 80 pc","Sushi Selection",3500],["SAGO","Desserts",450],["YUZU TART","Desserts",280],["CHOCOLATE MISO MOUSSE","Desserts",290],["GREEN APPLE MOCHI","Desserts",220]]};
 const {S:SECS, U:UNITS, I:INGS, R:RECS, M:MPRICE, MO:MENUONLY} = DATA;
 
-let ST={users:null,ov:{}}, ME=null, Q='', FILT='all';
+let ST={ov:{}}, ME=null, Q='', FILT='all', READY=false;
 let VIEW={t:'lib'}, STACK=[], SCROLL=0;
-const K={users:'barten:users:v1',ov:'barten:overrides:v1',custom:'barten:custom:v1'};
+const K={ov:'barten:overrides:v1',custom:'barten:custom:v1',session:'barten:session:v1'};
 const BASE_N=RECS.length;              // everything past this came from the New recipe form
 let CUSTOM=[];
 const isCustom=i=>i>=BASE_N;
 const cust=i=>CUSTOM[i-BASE_N];
-const isDead=i=>isCustom(i)&&cust(i).del;
+const isDead=i=>isCustom(i)&&(!cust(i)||cust(i).del);
 let MEM={};
 const HASWS = typeof window.storage==='object' && window.storage && typeof window.storage.get==='function';
 function hasLS(){ try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); return true; }catch(e){ return false; } }
@@ -235,22 +249,30 @@ function usedIn(si){ return RECS.map((r,i)=>i).filter(i=>i!==si && !isDead(i) &&
 
 /* ---------- boot ---------- */
 (async function(){
-  ST.users=await sget(K.users);
   ST.ov=(await sget(K.ov))||{};
   CUSTOM=(await sget(K.custom))||[];
   CUSTOM.forEach(c=>RECS.push([c.name, SECS.indexOf(c.sec)>=0?SECS.indexOf(c.sec):SECS.length-1, c.sub, c.rows]));
-  if(!ST.users){
-    ST.users=[{u:'irfan',p:'2026',role:'admin'},{u:'kitchen',p:'1111',role:'chef'}];
-    await sset(K.users,ST.users);
-    document.getElementById('lhint').textContent='First run \u2014 irfan / 2026 (admin), kitchen / 1111';
-  }
+  READY=true;
+  const b=document.getElementById('lbtn'); b.disabled=false; b.textContent='Sign in';
+
+  // still signed in from last time? the list in the file decides, not the stored copy
+  const sess=await sget(K.session);
+  const back=sess&&sess.u ? USERS.find(x=>String(x.u).toLowerCase()===String(sess.u).toLowerCase()) : null;
+  if(back){ enter(back); return; }
+  document.getElementById('login').classList.add('show');
+  document.getElementById('lu').focus();
 })();
 document.getElementById('lbtn').onclick=signIn;
 document.getElementById('lp').addEventListener('keydown',e=>{ if(e.key==='Enter') signIn(); });
 function signIn(){
+  if(!READY) return;
   const u=document.getElementById('lu').value.trim().toLowerCase(), p=document.getElementById('lp').value;
-  const hit=(ST.users||[]).find(x=>x.u.toLowerCase()===u&&x.p===p);
+  const hit=USERS.find(x=>String(x.u).toLowerCase()===u&&String(x.p)===p);
   if(!hit){ document.getElementById('lerr').textContent='That user name and PIN don\u2019t match. Try again.'; return; }
+  sset(K.session,{u:hit.u});          // stay signed in across refreshes
+  enter(hit);
+}
+function enter(hit){
   ME=hit;
   document.getElementById('login').style.display='none';
   document.getElementById('app').style.display='flex';
@@ -270,11 +292,13 @@ document.addEventListener('click',e=>{
   if(m && m.classList.contains('on') && !m.contains(e.target) && e.target.id!=='av') m.classList.remove('on');
 });
 window.logout=()=>{
+  sset(K.session,null);
   ME=null; STACK=[]; VIEW={t:'lib'}; Q=''; FILT='all'; SCROLL=0; ADD={type:'ing',sel:null,newName:'',q:''};
   document.getElementById('menu').classList.remove('on');
   document.getElementById('app').style.display='none';
   document.getElementById('main').innerHTML='';
   document.getElementById('login').style.display='flex';
+  document.getElementById('login').classList.add('show');
   document.getElementById('lp').value=''; document.getElementById('lerr').textContent='';
   document.getElementById('lu').focus();
   window.scrollTo(0,0);
@@ -637,43 +661,90 @@ function menucheck(){
 function users(){
   return `
   <div class="card">
-    <h3>Who can open the book</h3>
-    <p>Admins edit recipes and manage users. Chefs read and search.</p>
-    <div class="row">
-      <input class="tx" id="nu1" placeholder="User name" style="flex:1;min-width:130px">
-      <input class="tx" id="np1" placeholder="PIN" style="width:96px">
-      <select class="sel2" id="nr1"><option value="chef">Chef</option><option value="admin">Admin</option></select>
-      <button class="gpill sm" onclick="addUser()">Add</button>
-    </div>
-    <div class="err" id="uerr"></div>
+    <h3>Who can sign in</h3>
+    <p>This list lives inside the app file, so it is the same on every phone, tablet and browser.
+       Adding someone means editing that file once \u2014 not tapping a button on one device.</p>
+    <table class="tbl"><thead><tr><th>User</th><th style="width:80px">PIN</th><th style="width:90px">Role</th></tr></thead>
+    <tbody>${USERS.map(u=>`<tr><td>${esc(u.u)}${u.u===ME.u?' <span style="color:var(--mute2);font-size:11px">\u2014 you</span>':''}</td>
+      <td style="font-family:var(--mono);font-size:13px;color:var(--mute)">${esc(String(u.p))}</td>
+      <td style="color:var(--mute);font-size:13px">${u.role==='admin'?'Admin':'Chef'}</td></tr>`).join('')}</tbody></table>
   </div>
+
   <div class="card">
-    <table class="tbl"><thead><tr><th>User</th><th style="width:92px">PIN</th><th style="width:96px">Role</th><th style="width:80px"></th></tr></thead>
-    <tbody>${ST.users.map((u,n)=>`<tr>
-      <td>${esc(u.u)}</td>
-      <td><input class="num" style="width:76px;text-align:left" value="${esc(u.p)}" onchange="setPin(${n},this.value)"></td>
-      <td><select class="sel2" onchange="setRole(${n},this.value)">
-        <option value="chef" ${u.role==='chef'?'selected':''}>Chef</option>
-        <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></td>
-      <td>${u.u===ME.u?'<span style="color:var(--mute2);font-size:12px">you</span>'
-        :`<button class="gpill ghost sm" onclick="delUser(${n})">Remove</button>`}</td></tr>`).join('')}</tbody></table>
+    <div class="ch">Add someone</div>
+    <div class="chn">Fill this in, copy the line, and paste it into the app file on GitHub.</div>
+    <div class="row">
+      <input class="tx" id="nu1" placeholder="User name" style="flex:1;min-width:120px" oninput="lineOut()">
+      <input class="tx" id="np1" placeholder="PIN" style="width:90px" oninput="lineOut()">
+      <select class="sel2" id="nr1" onchange="lineOut()"><option value="chef">Chef</option><option value="admin">Admin</option></select>
+    </div>
+    <input class="tx" id="uline" readonly style="width:100%;margin-top:11px;font-family:var(--mono);font-size:12.5px"
+      value="fill in a name and a PIN">
+    <div class="row" style="margin-top:10px">
+      <button class="gpill sm" onclick="copyLine()">Copy the line</button>
+      <span class="saved" id="cpd">Copied</span>
+    </div>
+    <div class="note">Then on GitHub: open <b>index.html</b>, click the pencil, search for
+      <b>WHO CAN SIGN IN</b>, paste the line under the last one, and commit. Everyone gets it within a minute.</div>
+  </div>
+
+  <div class="card">
+    <div class="ch">Backup and transfer</div>
+    <div class="chn">Recipes you add and edits you make are saved on this device only.
+      Export them here, then import the file on another device.</div>
+    <div class="row">
+      <button class="gpill sm" onclick="exportData()">Export my changes</button>
+      <label class="gpill ghost sm" style="cursor:pointer">Import a file
+        <input type="file" accept="application/json,.json" style="display:none" onchange="importData(this)"></label>
+    </div>
+    <div id="iomsg"></div>
+    <div class="note">Importing replaces the recipes and edits on this device with the ones in the file.</div>
   </div>`;
 }
-window.addUser=async()=>{
+window.lineOut=()=>{
   const u=document.getElementById('nu1').value.trim(), p=document.getElementById('np1').value.trim(),
-        r=document.getElementById('nr1').value, err=document.getElementById('uerr');
-  if(!u||!p){ err.textContent='A user name and a PIN are both needed.'; return; }
-  if(ST.users.some(x=>x.u.toLowerCase()===u.toLowerCase())){ err.textContent='That user name is taken.'; return; }
-  ST.users.push({u,p,role:r}); await sset(K.users,ST.users); render();
+        r=document.getElementById('nr1').value;
+  document.getElementById('uline').value = (u&&p)
+    ? `  { u:'${u.replace(/'/g,"")}', p:'${p.replace(/'/g,"")}', role:'${r}' },`
+    : 'fill in a name and a PIN';
 };
-window.delUser=async n=>{
-  if(ST.users[n].role==='admin'&&ST.users.filter(x=>x.role==='admin').length===1) return;
-  ST.users.splice(n,1); await sset(K.users,ST.users); render();
+window.copyLine=async()=>{
+  const el=document.getElementById('uline');
+  el.select(); el.setSelectionRange(0,999);
+  try{ await navigator.clipboard.writeText(el.value); }catch(e){ try{ document.execCommand('copy'); }catch(e2){} }
+  const c=document.getElementById('cpd'); c.classList.add('on'); setTimeout(()=>c.classList.remove('on'),1400);
 };
-window.setPin=async(n,v)=>{ ST.users[n].p=v; await sset(K.users,ST.users); };
-window.setRole=async(n,v)=>{
-  if(ST.users[n].role==='admin'&&v!=='admin'&&ST.users.filter(x=>x.role==='admin').length===1){ render(); return; }
-  ST.users[n].role=v; await sset(K.users,ST.users); render();
+window.exportData=()=>{
+  const blob=new Blob([JSON.stringify({v:1, at:new Date().toISOString(), ov:ST.ov, custom:CUSTOM},null,1)],
+    {type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='BARTEN-changes-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+};
+window.importData=inp=>{
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  const msg=document.getElementById('iomsg');
+  const rd=new FileReader();
+  rd.onload=async()=>{
+    try{
+      const data=JSON.parse(rd.result);
+      if(typeof data!=='object'||(!data.ov&&!data.custom)) throw new Error('not a BARTEN file');
+      RECS.length=BASE_N;
+      CUSTOM=Array.isArray(data.custom)?data.custom:[];
+      CUSTOM.forEach(c=>RECS.push([c.name, SECS.indexOf(c.sec)>=0?SECS.indexOf(c.sec):SECS.length-1, c.sub, c.rows]));
+      ST.ov=data.ov&&typeof data.ov==='object'?data.ov:{};
+      await sset(K.ov,ST.ov); await saveCustom();
+      const added=CUSTOM.filter(c=>!c.del).length;
+      msg.innerHTML=`<div class="warnbox" style="margin-top:11px">Imported \u2014 ${added} added recipe${added===1?'':'s'}
+        and ${Object.keys(ST.ov).length} edited one${Object.keys(ST.ov).length===1?'':'s'}.</div>`;
+      STACK=[]; setTimeout(()=>{ VIEW={t:'lib'}; render(); }, 1200);
+    }catch(e){
+      msg.innerHTML=`<div class="warnbox" style="margin-top:11px">That file could not be read \u2014 ${esc(e.message)}.</div>`;
+    }
+  };
+  rd.readAsText(f);
+  inp.value='';
 };
 
 if('serviceWorker' in navigator && location.protocol==='https:'){
