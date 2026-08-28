@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0E0D0C">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="BARTEN">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -54,7 +54,10 @@ input,select{font-family:inherit;font-size:inherit}
 
 /* chrome */
 #app{display:none;min-height:100dvh;flex-direction:column}
-header{position:sticky;top:0;z-index:40;background:rgba(14,13,12,.93);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);padding:11px 16px 10px}
+header{position:sticky;top:0;z-index:40;background:rgba(14,13,12,.93);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+  padding:calc(11px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 10px
+          calc(16px + env(safe-area-inset-left))}
 .htop{display:flex;align-items:center;gap:12px}
 
 .avatar{width:42px;height:42px;border-radius:50%;background:var(--surf2);border:1px solid var(--line2);
@@ -123,7 +126,8 @@ textarea.tx{resize:vertical;line-height:1.5}
 .segs::-webkit-scrollbar{display:none}
 .seg{padding:8px 15px;border-radius:999px;background:var(--surf);color:var(--mute);font-size:13px;font-weight:500;white-space:nowrap}
 .seg.on{background:var(--gold);color:var(--goldink);font-weight:700}
-main{flex:1;width:100%;max-width:640px;margin:0 auto;padding:18px 16px 76px}
+main{flex:1;width:100%;max-width:640px;margin:0 auto;
+  padding:18px 16px calc(76px + env(safe-area-inset-bottom))}
 
 /* search */
 .srow{display:flex;gap:8px;margin-bottom:12px}
@@ -240,8 +244,7 @@ main{flex:1;width:100%;max-width:640px;margin:0 auto;padding:18px 16px 76px}
    role is 'admin' (can edit recipes) or 'chef' (read only).
    ========================================================================= */
 const USERS = [
-  { u:'irfan.malek',   p:'2026', role:'admin' },
-  { u:'mustafa.said',   p:'2026', role:'admin' },
+  { u:'irfan',   p:'2026', role:'admin' },
   { u:'kitchen', p:'1111', role:'chef'  },
 ];
 /* ======================================================================= */
@@ -420,7 +423,14 @@ function render(){
   else if(VIEW.t==='new') m.innerHTML=newRecipe();
   else if(VIEW.t==='menu') m.innerHTML=menucheck();
   else if(VIEW.t==='users') m.innerHTML=users();
+  if(VIEW.t!=='rec') m.insertAdjacentHTML('beforeend', acctRow());
   window.scrollTo(0, VIEW.t==='lib' ? SCROLL : 0);
+}
+function acctRow(){
+  return `<div class="acct">
+    <div class="who2">Signed in as <b>${esc(ME.u)}</b> \u00B7 ${ME.role==='admin'?'Admin':'Chef'}</div>
+    <button class="signout" onclick="logout()">Sign out</button>
+  </div>`;
 }
 function open_(t,i){
   if(VIEW.t==='lib') SCROLL=window.scrollY;
@@ -470,10 +480,7 @@ function library(){
   <div class="count">${list.length} of ${RECS.length} recipes</div>
   ${list.length?`<div class="list">${list.map(i=>itemHTML(i,q)).join('')}</div>`
     :`<div class="empty">Nothing matches \u201C${esc(Q)}\u201D. Try an ingredient name, or tap All.</div>`}
-  <div class="acct">
-    <div class="who2">Signed in as <b>${esc(ME.u)}</b> \u00B7 ${ME.role==='admin'?'Admin':'Chef'}</div>
-    <button class="signout" onclick="logout()">Sign out</button>
-  </div>`;
+`;
 }
 window.setFilt=f=>{ FILT=f; SCROLL=0; render(); };
 function itemHTML(i,q){
@@ -497,7 +504,7 @@ function itemHTML(i,q){
 }
 document.addEventListener('input',e=>{
   if(e.target.id==='q'){ Q=e.target.value; SCROLL=0;
-    document.getElementById('main').innerHTML=library();
+    document.getElementById('main').innerHTML=library()+acctRow();
     const el=document.getElementById('q'); el.focus(); el.setSelectionRange(el.value.length,el.value.length); }
 });
 document.addEventListener('change',e=>{ if(e.target.id==='f'){ FILT=e.target.value; SCROLL=0; render(); } });
