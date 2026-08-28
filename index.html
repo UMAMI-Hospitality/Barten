@@ -67,6 +67,30 @@ header{position:sticky;top:0;z-index:40;background:rgba(14,13,12,.93);backdrop-f
 .menu button{display:block;width:100%;text-align:left;padding:11px 12px;border-radius:11px;font-size:14px;margin-top:6px}
 .menu button:hover{background:var(--surf3)}
 .menu .out{color:#E88A79}
+.allerg{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.al{font-size:10.5px;letter-spacing:.06em;font-weight:700;padding:4px 10px;border-radius:999px;
+  background:rgba(216,88,63,.16);color:#E88A79;text-transform:uppercase}
+.al.none{background:var(--surf2);color:var(--mute2);font-weight:500;letter-spacing:.04em}
+.scaler{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:13px;padding-bottom:13px;
+  border-bottom:1px solid var(--line)}
+.sb{padding:8px 15px;border-radius:999px;background:var(--surf2);border:1px solid var(--line);
+  color:var(--mute);font-size:13px;font-weight:600}
+.sb.on{background:var(--gold);color:var(--goldink);border-color:var(--gold)}
+.sci{width:92px;padding:8px 11px;border-radius:999px;background:var(--surf2);border:1px solid var(--line);
+  color:var(--text);font-size:13px;font-family:var(--mono)}
+.steps{margin:0;padding-left:22px}
+.steps li{padding:8px 0 8px 4px;font-size:14.5px;line-height:1.5;border-bottom:1px solid var(--line)}
+.steps li:last-child{border-bottom:0}
+.steps li::marker{color:var(--gold);font-weight:700;font-family:var(--mono);font-size:12.5px}
+.fset{margin-top:15px;padding-top:15px;border-top:1px solid var(--line)}
+.fset label{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
+  font-weight:700;margin:16px 0 7px}
+.fset label.first{margin-top:0}
+.tx.w{width:100%}
+textarea.tx{resize:vertical;line-height:1.5}
+.hint2{font-size:11.5px;color:var(--mute2);margin-top:6px;line-height:1.45}
+.sugbox{margin-top:9px;background:rgba(233,167,60,.08);border:1px solid rgba(233,167,60,.26);
+  border-radius:13px;padding:11px 13px;font-size:12.5px;color:#E4CFA6;line-height:1.5}
 .addbox{margin-top:16px;padding-top:15px;border-top:1px solid var(--line)}
 .picklist{max-height:210px;overflow-y:auto;margin-top:9px;border:1px solid var(--line);border-radius:13px;
   background:var(--bg)}
@@ -194,8 +218,7 @@ main{flex:1;width:100%;max-width:640px;margin:0 auto;padding:18px 16px 76px}
    ========================================================================= */
 const USERS = [
   { u:'irfan',   p:'2026', role:'admin' },
-  { u:'mustafa.said',   p:'2026', role:'admin' },
-  { u:'barten.chef', p:'1111', role:'chef'  },
+  { u:'kitchen', p:'1111', role:'chef'  },
 ];
 /* ======================================================================= */
 
@@ -204,7 +227,20 @@ const {S:SECS, U:UNITS, I:INGS, R:RECS, M:MPRICE, MO:MENUONLY} = DATA;
 
 let ST={ov:{}}, ME=null, Q='', FILT='all', READY=false;
 let VIEW={t:'lib'}, STACK=[], SCROLL=0;
-const K={ov:'barten:overrides:v1',custom:'barten:custom:v1',session:'barten:session:v1'};
+const K={ov:'barten:overrides:v1',custom:'barten:custom:v1',session:'barten:session:v1',
+         meta:'barten:meta:v1'};
+/* per-recipe extras the spreadsheets never had: yield, allergens, method, plating, notes, photo */
+let META={};
+const meta=i=>META[i]||{};
+/* SHARED = published to GitHub for everyone. LOCAL_* = not published yet. */
+let SHARED={ov:{},custom:[],meta:{}};
+let LOCAL_OV={}, LOCAL_META={}, LOCAL_CUSTOM=[], SHARED_N=0;
+async function saveMeta(){ return sset(K.meta,LOCAL_META); }
+function setMetaField(i,f,v){
+  if(!META[i]) META[i]={};
+  else if(!LOCAL_META[i]) META[i]=Object.assign({},META[i]);
+  META[i][f]=v; LOCAL_META[i]=META[i];
+}
 const BASE_N=RECS.length;              // everything past this came from the New recipe form
 let CUSTOM=[];
 const isCustom=i=>i>=BASE_N;
@@ -231,13 +267,15 @@ function rows(i){ if(isCustom(i)) return RECS[i][3]; const o=ST.ov[i]; return (o
 /* the array a change should be written into */
 function editRows(i){
   if(isCustom(i)) return RECS[i][3];
-  if(!ST.ov[i]) ST.ov[i]={};
-  if(!ST.ov[i].rows) ST.ov[i].rows=JSON.parse(JSON.stringify(RECS[i][3]));
-  return ST.ov[i].rows;
+  let o=ST.ov[i];
+  if(!o){ o={}; ST.ov[i]=o; }
+  if(!o.rows) o.rows=JSON.parse(JSON.stringify(RECS[i][3]));
+  LOCAL_OV[i]=o;
+  return o.rows;
 }
 function rowName(r){ return r[0]===1?(RECS[r[1]]?NAME(r[1]):'\u2014'):INGS[r[1]]; }
 const rowUnit=r=>UNITS[r[2]];
-function imgOf(i){ const o=ST.ov[i]; return (o&&o.img)?o.img:''; }
+function imgOf(i){ return meta(i).img||''; }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const initials=s=>s.replace(/[^A-Za-z ]/g,'').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'B';
 function plate(i,extra){
@@ -245,13 +283,51 @@ function plate(i,extra){
   return `<div class="plate ${extra||''}">${u?`<img src="${esc(u)}" alt="" onerror="this.remove()">`
     :`<span class="init">${esc(initials(NAME(i)))}</span>`}</div>`;
 }
+/* allergen words seen in ingredient names, sub-recipes included.
+   A prompt for the chef to check - never a substitute for checking. */
+const ALLERGEN_WORDS={
+  'Fish':['fish','salmon','tuna','otoro','hiramasa','unagi','eel','anchovy','bonito','dashi','suzuki','cod','swordfish','sashimi','tobiko','caviar'],
+  'Crustaceans':['shrimp','prawn','ebi','lobster','crab','kani','surimi'],
+  'Molluscs':['octopus','squid','calamari','clam','mussel','scallop','oyster'],
+  'Soy':['soy','miso','tofu','edamame','hoisin','teriyaki','ponzu','gochujang','kikkoman','tamari','tosazu','tozasu'],
+  'Gluten':['flour','panko','breadcrumb','bread','toast','brioche','noodle','ramen','soba','udon','tempura','soy sauce','beer','gyoza','wonton','crouton','wheat','batter'],
+  'Egg':['egg','mayo','kewpie','aioli','tobiko','meringue','brioche','aquafaba'],
+  'Milk':['milk','butter','cream','cheese','parmesan','mozzarella','yoghurt','yogurt'],
+  'Sesame':['sesame','tahini','furikake','togarashi','gomashio'],
+  'Peanuts':['peanut'],
+  'Tree nuts':['almond','cashew','walnut','pistachio','hazelnut','pecan','macadamia'],
+  'Sulphites':['wine','vinegar','mirin','sake'],
+  'Celery':['celery'],
+  'Mustard':['mustard','dijon'],
+};
+function suggestAllergens(i,seen){
+  seen=seen||new Set(); if(seen.has(i)) return []; seen.add(i);
+  const out=new Set();
+  for(const r of rows(i)){
+    if(r[0]===1&&RECS[r[1]]){ suggestAllergens(r[1],seen).forEach(a=>out.add(a)); continue; }
+    const n=rowName(r).toLowerCase();
+    for(const a in ALLERGEN_WORDS) if(ALLERGEN_WORDS[a].some(w=>n.includes(w))) out.add(a);
+  }
+  return [...out].sort();
+}
+
 /* which recipes call this sub-recipe */
 function usedIn(si){ return RECS.map((r,i)=>i).filter(i=>i!==si && !isDead(i) && rows(i).some(r=>r[0]===1&&r[1]===si)); }
 
 /* ---------- boot ---------- */
 (async function(){
-  ST.ov=(await sget(K.ov))||{};
-  CUSTOM=(await sget(K.custom))||[];
+  LOCAL_OV=(await sget(K.ov))||{};
+  LOCAL_CUSTOM=(await sget(K.custom))||[];
+  LOCAL_META=(await sget(K.meta))||{};
+  try{
+    const res=await fetch('shared.json',{cache:'no-cache'});
+    if(res.ok){ const j=await res.json();
+      SHARED={ov:j.ov||{}, custom:Array.isArray(j.custom)?j.custom:[], meta:j.meta||{}}; }
+  }catch(e){ /* nothing published yet, or offline */ }
+  SHARED_N=SHARED.custom.length;
+  ST.ov =Object.assign({},SHARED.ov,LOCAL_OV);
+  META  =Object.assign({},SHARED.meta,LOCAL_META);
+  CUSTOM=SHARED.custom.concat(LOCAL_CUSTOM);
   CUSTOM.forEach(c=>RECS.push([c.name, SECS.indexOf(c.sec)>=0?SECS.indexOf(c.sec):SECS.length-1, c.sub, c.rows]));
   READY=true;
   const b=document.getElementById('lbtn'); b.disabled=false; b.textContent='Sign in';
@@ -396,23 +472,25 @@ document.addEventListener('change',e=>{ if(e.target.id==='f'){ FILT=e.target.val
 
 /* ---------- recipe sheet ---------- */
 function sheet(i){
-  const isSub=ISSUB(i), rs=rows(i), admin=ME.role==='admin', ed=!!VIEW.edit;
-  const subRows=rs.filter(r=>r[0]===1).length;
-  const parents=usedIn(i);
+  const isSub=ISSUB(i), rs=rows(i), admin=ME.role==='admin', ed=admin&&!!VIEW.edit;
+  const m=meta(i), subRows=rs.filter(r=>r[0]===1).length, parents=usedIn(i);
+  const sc=VIEW.scale||1;
+  const steps=Array.isArray(m.method)?m.method:[];
+  const allerg=Array.isArray(m.allergens)?m.allergens:[];
+  const qfmt=q=>(Math.round(((Number(q)||0)*sc)*100)/100).toString();
 
   const lines=rs.map((r,n)=>{
-    const nm=rowName(r), u=rowUnit(r), qty=r[3];
+    const nm=rowName(r), u=rowUnit(r);
     const qcell=ed
-      ? `<input class="num" value="${qty}" onchange="setQty(${i},${n},this.value)">
+      ? `<input class="num" value="${r[3]}" onchange="setQty(${i},${n},this.value)">
          <select class="sel2" onchange="setUnit(${i},${n},this.value)">${UNITS.map(x=>`<option ${x===u?'selected':''}>${x}</option>`).join('')}</select>`
-      : `<span class="q">${qty} ${u}</span>`;
+      : `<span class="q">${qfmt(r[3])} ${u}</span>`;
     const move=ed?`<div class="mv">
-      <button onclick="moveRow(${i},${n},-1)" ${n===0?'disabled':''} title="Move up">\u25B2</button>
-      <button onclick="moveRow(${i},${n},1)" ${n===rs.length-1?'disabled':''} title="Move down">\u25BC</button></div>`:'';
+      <button onclick="moveRow(${i},${n},-1)" ${n===0?'disabled':''}>\u25B2</button>
+      <button onclick="moveRow(${i},${n},1)" ${n===rs.length-1?'disabled':''}>\u25BC</button></div>`:'';
     const del=ed?`<button class="x" onclick="delRow(${i},${n})">\u00D7</button>`:'';
     const hi=(VIEW.moved===n)?' moved':'';
-    if(r[0]===1 && RECS[r[1]]){
-      // tappable sub-recipe row
+    if(r[0]===1&&RECS[r[1]]){
       return `<div class="subrow${hi}">
         <div class="n" onclick="open_('rec',${r[1]})" style="cursor:pointer">${esc(nm)}<small>${ISSUB(r[1])?'Sub-recipe':'Made from another sheet'} \u00B7 tap to open</small></div>
         ${qcell}${move}${del}${ed?'':`<div class="chev" onclick="open_('rec',${r[1]})" style="cursor:pointer">\u203A</div>`}</div>`;
@@ -422,22 +500,43 @@ function sheet(i){
 
   return `
   <button class="back" onclick="back()">\u2190 ${esc(backLabel())}</button>
+
   <div class="hero">
     ${plate(i)}
     <h2>${esc(NAME(i))}</h2>
     <div class="meta">
       <span class="chip ${isSub?'':'g'}">${esc(isSub?'Sub-recipe':SEC(i))}</span>
-      <span>${rs.length} items</span>
+      ${m.yield?`<span>${esc(m.yield)}</span>`:`<span style="color:var(--mute2)">yield not set</span>`}
       ${ONMENU(i)?'<span class="chip live">on the menu</span>':''}
     </div>
+    <div class="allerg">${allerg.length?allerg.map(a=>`<span class="al">${esc(a)}</span>`).join('')
+      :'<span class="al none">Allergens not recorded</span>'}</div>
   </div>
 
   <div class="card">
     <div class="ch">Ingredients</div>
-    <div class="chn">${rs.length?`${rs.length} lines${subRows?` \u00B7 ${subRows} made in-house`:''}`
-      :'Nothing added yet \u2014 use the box below.'}</div>
+    <div class="chn">${rs.length?`${rs.length} lines${subRows?` \u00B7 ${subRows} made in-house`:''}`:'Nothing added yet.'}</div>
+    ${ed?'':`<div class="scaler">
+      ${[1,2,4].map(x=>`<button class="sb ${sc===x?'on':''}" onclick="setScale(${x})">${x}\u00D7</button>`).join('')}
+      <input class="sci" type="number" min="0.25" step="0.25" placeholder="custom"
+        value="${[1,2,4].includes(sc)?'':sc}" oninput="setScale(this.value)">
+      ${sc!==1?`<span class="chip g">\u00D7${sc}</span>`:''}
+    </div>`}
     ${lines}
     ${ed?addPanel(i):''}
+  </div>
+
+  <div class="card">
+    <div class="ch">Method</div>
+    ${steps.length?`<ol class="steps">${steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>`
+      :`<div class="chn" style="margin:0">No method written yet.${admin?' Use Edit details below.':''}</div>`}
+  </div>
+
+  <div class="card">
+    <div class="ch">Plating &amp; garnish</div>
+    <div class="chn" style="margin:0">${m.plating?esc(m.plating):'Not recorded.'}</div>
+    <div class="ch" style="margin-top:17px">Chef\u2019s notes</div>
+    <div class="chn" style="margin:0">${m.notes?esc(m.notes):'Not recorded.'}</div>
   </div>
 
   ${parents.length?`<div class="card">
@@ -445,37 +544,72 @@ function sheet(i){
     <div class="chn">${parents.length} recipe${parents.length>1?'s':''} call this</div>
     <div class="usedin">${parents.map(p=>`<button class="ub" onclick="open_('rec',${p})">${esc(NAME(p))}</button>`).join('')}</div>
   </div>`:''}
-  ${(isSub&&!parents.length)?`<div class="card">
-    <div class="ch">Used in</div>
-    <div class="chn">Nothing on file calls this prep \u2014 it may belong to a dish that has no sheet yet.</div>
-  </div>`:''}
 
-  ${admin?`<div class="card">
-    <div class="ch">Admin</div>
-    <div class="chn">${isCustom(i)?'This recipe was added in the app. It saves on this device.'
-      :'Edits save on this device and stay until you restore the original.'}</div>
+  ${admin?adminCard(i,ed,isSub,m,allerg,steps):''}`;
+}
+
+function adminCard(i,ed,isSub,m,allerg,steps){
+  const missing=suggestAllergens(i).filter(a=>!allerg.includes(a));
+  return `<div class="card">
+    <div class="ch">Edit</div>
+    <div class="chn">${isCustom(i)?'Added in the app.':'From the original recipe files.'}
+      Changes stay on this device until you publish them.</div>
     <div class="row">
-      <button class="gpill sm" onclick="toggleEdit()">${ed?'Done editing':'Edit recipe'}</button>
+      <button class="gpill sm" onclick="toggleEdit()">${ed?'Done with ingredients':'Edit ingredients'}</button>
+      <button class="gpill ghost sm" onclick="toggleDetails()">${VIEW.details?'Close details':'Edit details'}</button>
       ${(!isCustom(i)&&ST.ov[i]&&ST.ov[i].rows)?`<button class="gpill ghost sm" onclick="resetRec(${i})">Restore original</button>`:''}
       <span class="saved" id="sv">Saved</span>
     </div>
-    ${isCustom(i)?`<div class="row" style="margin-top:11px">
-      <input class="tx" style="flex:1;min-width:150px" value="${esc(NAME(i))}"
-        onchange="renameRecipe(${i},this.value)" placeholder="Recipe name">
-      ${!isSub?`<select class="sel2" onchange="resectionRecipe(${i},this.value)">
-        ${SECS.filter(x=>x!=='Sub-Recipes').map(x=>`<option ${SEC(i)===x?'selected':''}>${esc(x)}</option>`).join('')}
-        </select>`:''}
-    </div>
-    <div class="row" style="margin-top:11px">
-      <button class="gpill ghost sm" onclick="deleteRecipe(${i})">Delete this recipe</button>
-    </div>
-    <div id="delmsg"></div>`:''}
-    <div class="row" style="margin-top:11px">
-      <input class="tx" style="flex:1;min-width:170px" id="imu" placeholder="Photo URL" value="${esc(imgOf(i))}">
-      <button class="gpill ghost sm" onclick="setImg(${i},document.getElementById('imu').value)">Set photo</button>
-    </div>
-  </div>`:''}`;
+    ${VIEW.details?`
+    <div class="fset">
+      <label class="first">Photo</label>
+      <div class="row">
+        <label class="gpill ghost sm" style="cursor:pointer">Choose a photo
+          <input type="file" accept="image/*" style="display:none" onchange="uploadPhoto(${i},this)"></label>
+        ${m.img?`<button class="gpill ghost sm" onclick="setPhoto(${i},'')">Remove</button>`:''}
+        <span class="chip" id="phmsg">${m.img?Math.round(m.img.length/1024)+' KB':''}</span>
+      </div>
+      <div class="hint2">From the camera or the gallery. Shrunk automatically so the app stays quick.</div>
+
+      <label>Yield / portion size</label>
+      <input class="tx w" value="${esc(m.yield||'')}" placeholder="e.g. 1 portion, 220 g"
+        onchange="setMeta(${i},'yield',this.value)">
+
+      <label>Allergens</label>
+      <input class="tx w" value="${esc(allerg.join(', '))}" placeholder="comma separated"
+        onchange="setMetaList(${i},'allergens',this.value)">
+      ${missing.length?`<div class="sugbox">
+        <b>Seen in the ingredient names:</b> ${missing.map(esc).join(', ')}.
+        <button class="gpill ghost sm" style="margin-top:8px" onclick="applyAllergens(${i})">Add these</button>
+        <div class="hint2" style="margin-top:7px">This only reads ingredient names. It cannot see allergens hidden
+          inside bought products. Check every one against the actual labels before anyone relies on it.</div>
+      </div>`:''}
+
+      <label>Method \u2014 one step per line</label>
+      <textarea class="tx w" rows="7" placeholder="Season the beef&#10;Sear 90 seconds each side&#10;Rest 4 minutes"
+        onchange="setMetaLines(${i},'method',this.value)">${esc(steps.join('\n'))}</textarea>
+
+      <label>Plating &amp; garnish</label>
+      <textarea class="tx w" rows="3" onchange="setMeta(${i},'plating',this.value)">${esc(m.plating||'')}</textarea>
+
+      <label>Chef\u2019s notes</label>
+      <textarea class="tx w" rows="3" onchange="setMeta(${i},'notes',this.value)">${esc(m.notes||'')}</textarea>
+
+      ${isCustom(i)?`<label>Name and section</label>
+      <div class="row">
+        <input class="tx" style="flex:1;min-width:140px" value="${esc(NAME(i))}" onchange="renameRecipe(${i},this.value)">
+        ${!isSub?`<select class="sel2" onchange="resectionRecipe(${i},this.value)">
+          ${SECS.filter(x=>x!=='Sub-Recipes').map(x=>`<option ${SEC(i)===x?'selected':''}>${esc(x)}</option>`).join('')}
+          </select>`:''}
+      </div>
+      <div class="row" style="margin-top:11px">
+        <button class="gpill ghost sm" onclick="deleteRecipe(${i})">Delete this recipe</button>
+      </div>
+      <div id="delmsg"></div>`:''}
+    </div>`:''}
+  </div>`;
 }
+
 /* ---------- add a line: pick a type, then pick from that list ---------- */
 let ADD={type:'ing', sel:null, newName:'', q:''};
 function addPanel(i){
@@ -526,10 +660,47 @@ window.addSearch=v=>{ ADD.q=v; ADD.sel=null; ADD.newName=''; refreshPicks(false)
 window.pickIt=n=>{ ADD.sel=n; ADD.newName=''; refreshPicks(true); };
 window.pickNew=()=>{ ADD.newName=ADD.q.trim(); ADD.sel=null; refreshPicks(true); };
 
+window.setScale=v=>{ const n=Number(v); VIEW.scale=(n&&n>0)?n:1; render(); };
+window.toggleDetails=()=>{ VIEW.details=!VIEW.details; render(); };
+function flashSaved(){ const el=document.getElementById('sv');
+  if(el){ el.classList.add('on'); setTimeout(()=>el.classList.remove('on'),1200); } }
+window.setMeta=async(i,f,v)=>{ setMetaField(i,f,String(v||'').trim()); await saveMeta(); flashSaved(); };
+window.setMetaList=async(i,f,v)=>{
+  setMetaField(i,f,String(v||'').split(',').map(x=>x.trim()).filter(Boolean)); await saveMeta(); render(); };
+window.setMetaLines=async(i,f,v)=>{
+  setMetaField(i,f,String(v||'').split('\n').map(x=>x.trim()).filter(Boolean)); await saveMeta(); flashSaved(); };
+window.applyAllergens=async i=>{
+  const cur=Array.isArray(meta(i).allergens)?meta(i).allergens:[];
+  setMetaField(i,'allergens',[...new Set([...cur,...suggestAllergens(i)])].sort());
+  await saveMeta(); render(); };
+window.setPhoto=async(i,dataUrl)=>{ setMetaField(i,'img',dataUrl||''); await saveMeta(); render(); };
+window.uploadPhoto=(i,inp)=>{
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  const msg=document.getElementById('phmsg'); if(msg) msg.textContent='working\u2026';
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const img=new Image();
+    img.onload=async()=>{
+      const MAX=640, k=Math.min(1,MAX/Math.max(img.width,img.height));
+      const w=Math.round(img.width*k), h=Math.round(img.height*k);
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      let out=cv.toDataURL('image/jpeg',0.62);
+      if(out.length>140000) out=cv.toDataURL('image/jpeg',0.45);
+      await setPhoto(i,out);
+    };
+    img.onerror=()=>{ if(msg) msg.textContent='could not read that image'; };
+    img.src=rd.result;
+  };
+  rd.onerror=()=>{ if(msg) msg.textContent='could not read that file'; };
+  rd.readAsDataURL(f);
+  inp.value='';
+};
+
 window.toggleEdit=()=>{ ADD={type:'ing',sel:null,newName:'',q:''}; VIEW.edit=!VIEW.edit; render(); };
 function ensure(i){ editRows(i); }
-async function saveCustom(){ return sset(K.custom, CUSTOM); }
-async function save(){ const ok=await sset(K.ov,ST.ov) && await saveCustom(); const el=document.getElementById('sv');
+async function saveCustom(){ LOCAL_CUSTOM=CUSTOM.slice(SHARED_N); return sset(K.custom, LOCAL_CUSTOM); }
+async function save(){ const ok=await sset(K.ov,LOCAL_OV) && await saveCustom(); const el=document.getElementById('sv');
   if(el){ el.textContent=ok?'Saved':'Saved for this session only'; el.classList.add('on'); setTimeout(()=>el.classList.remove('on'),1400); } }
 window.setQty=async(i,n,v)=>{ editRows(i)[n][3]=Number(v)||0; await save(); render(); };
 window.setUnit=async(i,n,v)=>{ editRows(i)[n][2]=UNITS.indexOf(v); await save(); render(); };
@@ -690,18 +861,46 @@ function users(){
   </div>
 
   <div class="card">
-    <div class="ch">Backup and transfer</div>
-    <div class="chn">Recipes you add and edits you make are saved on this device only.
-      Export them here, then import the file on another device.</div>
+    <div class="ch">Publish to everyone</div>
+    <div class="chn">Photos, method steps and edits sit on this device until you publish.
+      Publishing writes one file you upload to GitHub, and every phone then gets it.</div>
     <div class="row">
-      <button class="gpill sm" onclick="exportData()">Export my changes</button>
-      <label class="gpill ghost sm" style="cursor:pointer">Import a file
+      <button class="gpill sm" onclick="publish()">Publish\u2026</button>
+      <label class="gpill ghost sm" style="cursor:pointer">Load a file
         <input type="file" accept="application/json,.json" style="display:none" onchange="importData(this)"></label>
+      <button class="gpill ghost sm" onclick="revertLocal()">Discard unpublished</button>
     </div>
     <div id="iomsg"></div>
-    <div class="note">Importing replaces the recipes and edits on this device with the ones in the file.</div>
+    <div class="note">Not yet published on this device: ${Object.keys(LOCAL_OV).length} edited,
+      ${LOCAL_CUSTOM.filter(c=>!c.del).length} added, ${Object.keys(LOCAL_META).length} with details or photos.</div>
   </div>`;
 }
+window.publish=()=>{
+  const txt=JSON.stringify({v:2, at:new Date().toISOString(), ov:ST.ov, custom:CUSTOM, meta:META});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));
+  a.download='shared.json'; a.click();
+  document.getElementById('iomsg').innerHTML=`<div class="warnbox" style="margin-top:11px">
+    <b>shared.json saved \u2014 ${Math.round(txt.length/1024)} KB.</b><br>
+    Upload it to GitHub in the same folder as index.html and commit.
+    Every device picks it up next time it opens.<br><br>
+    Once it is up there, tap <b>Discard unpublished</b> so this device follows the published copy too.</div>`;
+};
+window.revertLocal=async()=>{
+  if(!VIEW.confirmRevert){ VIEW.confirmRevert=true;
+    document.getElementById('iomsg').innerHTML=`<div class="warnbox" style="margin-top:11px">
+      Throw away everything on this device that has not been published?
+      <button class="gpill sm" style="margin-left:8px" onclick="revertLocal()">Yes, discard</button>
+      <button class="gpill ghost sm" onclick="VIEW.confirmRevert=false;render()">Cancel</button></div>`;
+    return; }
+  LOCAL_OV={}; LOCAL_META={}; LOCAL_CUSTOM=[];
+  await sset(K.ov,{}); await sset(K.meta,{}); await sset(K.custom,[]);
+  ST.ov=Object.assign({},SHARED.ov);
+  META =Object.assign({},SHARED.meta);
+  RECS.length=BASE_N; CUSTOM=SHARED.custom.slice();
+  CUSTOM.forEach(c=>RECS.push([c.name, SECS.indexOf(c.sec)>=0?SECS.indexOf(c.sec):SECS.length-1, c.sub, c.rows]));
+  VIEW.confirmRevert=false; STACK=[]; VIEW={t:'lib'}; render();
+};
 window.lineOut=()=>{
   const u=document.getElementById('nu1').value.trim(), p=document.getElementById('np1').value.trim(),
         r=document.getElementById('nr1').value;
@@ -715,14 +914,6 @@ window.copyLine=async()=>{
   try{ await navigator.clipboard.writeText(el.value); }catch(e){ try{ document.execCommand('copy'); }catch(e2){} }
   const c=document.getElementById('cpd'); c.classList.add('on'); setTimeout(()=>c.classList.remove('on'),1400);
 };
-window.exportData=()=>{
-  const blob=new Blob([JSON.stringify({v:1, at:new Date().toISOString(), ov:ST.ov, custom:CUSTOM},null,1)],
-    {type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='BARTEN-changes-'+new Date().toISOString().slice(0,10)+'.json';
-  a.click();
-};
 window.importData=inp=>{
   const f=inp.files&&inp.files[0]; if(!f) return;
   const msg=document.getElementById('iomsg');
@@ -730,22 +921,24 @@ window.importData=inp=>{
   rd.onload=async()=>{
     try{
       const data=JSON.parse(rd.result);
-      if(typeof data!=='object'||(!data.ov&&!data.custom)) throw new Error('not a BARTEN file');
+      if(typeof data!=='object'||(!data.ov&&!data.custom&&!data.meta)) throw new Error('not a BARTEN file');
+      LOCAL_OV  =(data.ov  &&typeof data.ov  ==='object')?data.ov  :{};
+      LOCAL_META=(data.meta&&typeof data.meta==='object')?data.meta:{};
+      LOCAL_CUSTOM=Array.isArray(data.custom)?data.custom.slice(SHARED_N):[];
+      ST.ov=Object.assign({},SHARED.ov,LOCAL_OV);
+      META =Object.assign({},SHARED.meta,LOCAL_META);
       RECS.length=BASE_N;
-      CUSTOM=Array.isArray(data.custom)?data.custom:[];
+      CUSTOM=SHARED.custom.concat(LOCAL_CUSTOM);
       CUSTOM.forEach(c=>RECS.push([c.name, SECS.indexOf(c.sec)>=0?SECS.indexOf(c.sec):SECS.length-1, c.sub, c.rows]));
-      ST.ov=data.ov&&typeof data.ov==='object'?data.ov:{};
-      await sset(K.ov,ST.ov); await saveCustom();
-      const added=CUSTOM.filter(c=>!c.del).length;
-      msg.innerHTML=`<div class="warnbox" style="margin-top:11px">Imported \u2014 ${added} added recipe${added===1?'':'s'}
-        and ${Object.keys(ST.ov).length} edited one${Object.keys(ST.ov).length===1?'':'s'}.</div>`;
-      STACK=[]; setTimeout(()=>{ VIEW={t:'lib'}; render(); }, 1200);
+      await sset(K.ov,LOCAL_OV); await sset(K.meta,LOCAL_META); await sset(K.custom,LOCAL_CUSTOM);
+      msg.innerHTML=`<div class="warnbox" style="margin-top:11px">Loaded \u2014 ${CUSTOM.filter(c=>!c.del).length}
+        added, ${Object.keys(META).length} with details.</div>`;
+      STACK=[]; setTimeout(()=>{ VIEW={t:'lib'}; render(); },1200);
     }catch(e){
       msg.innerHTML=`<div class="warnbox" style="margin-top:11px">That file could not be read \u2014 ${esc(e.message)}.</div>`;
     }
   };
-  rd.readAsText(f);
-  inp.value='';
+  rd.readAsText(f); inp.value='';
 };
 
 if('serviceWorker' in navigator && location.protocol==='https:'){

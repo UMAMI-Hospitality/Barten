@@ -1,7 +1,7 @@
 // BARTEN Recipe Book
 // v2 - network-first for the page so a re-upload actually reaches installed devices,
 //      cache-first for icons. Bump CACHE whenever you change this file.
-const CACHE = 'barten-v2';
+const CACHE = 'barten-v3';
 const CORE = ['./', './index.html', './manifest.webmanifest'];
 
 self.addEventListener('install', e => {
@@ -17,16 +17,20 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  const isPage = req.mode === 'navigate' || req.destination === 'document';
+  const url = new URL(req.url);
+  // the published recipe file must always be checked for a newer copy
+  const isShared = url.pathname.endsWith('/shared.json') || url.pathname.endsWith('shared.json');
+  const isPage = req.mode === 'navigate' || req.destination === 'document' || isShared;
 
   if (isPage) {
     // fresh copy when online, cached copy when not
     e.respondWith(
       fetch(req).then(res => {
         const copy = res.clone();
-        caches.open(CACHE).then(c => c.put('./index.html', copy)).catch(() => {});
+        caches.open(CACHE).then(c => c.put(isShared ? './shared.json' : './index.html', copy)).catch(() => {});
         return res;
-      }).catch(() => caches.match('./index.html').then(r => r || caches.match('./')))
+      }).catch(() => caches.match(isShared ? './shared.json' : './index.html')
+                        .then(r => r || caches.match('./')))
     );
     return;
   }
